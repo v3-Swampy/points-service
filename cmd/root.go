@@ -1,17 +1,21 @@
 package cmd
 
 import (
+	"context"
+	"sync"
+
+	apiUtil "github.com/Conflux-Chain/go-conflux-util/api"
+	"github.com/Conflux-Chain/go-conflux-util/cmd"
 	"github.com/Conflux-Chain/go-conflux-util/config"
 	"github.com/Conflux-Chain/go-conflux-util/log"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"github.com/v3-Swampy/points-service/api"
 )
 
 var rootCmd = &cobra.Command{
 	Use: "points-service",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		return cmd.Help()
-	},
+	Run: start,
 }
 
 func init() {
@@ -20,6 +24,19 @@ func init() {
 	})
 
 	log.BindFlags(rootCmd)
+}
+
+func start(*cobra.Command, []string) {
+	logrus.Info("Starting service ...")
+
+	_, cancel := context.WithCancel(context.Background())
+	var wg sync.WaitGroup
+
+	apiUtil.MustServeFromViper(api.Routes)
+
+	logrus.Info("Service started")
+
+	cmd.GracefulShutdown(&wg, cancel)
 }
 
 // Execute is the command line entrypoint.
