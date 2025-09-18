@@ -5,6 +5,7 @@ import (
 	stdSync "sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/openweb3/web3go"
 	"github.com/pkg/errors"
@@ -86,6 +87,7 @@ func (service *Service) Run(ctx context.Context, wg *stdSync.WaitGroup) {
 func (service *Service) sync(ctx context.Context, hourTimestamp int64) (bool, error) {
 	var tradeEvents []sync.TradeEvent
 	var liquidityEvents []sync.LiquidityEvent
+	priceCache := make(map[common.Address]decimal.Decimal)
 
 	for _, pool := range service.config.Pools {
 		// retrieve trade data
@@ -115,12 +117,12 @@ func (service *Service) sync(ctx context.Context, hourTimestamp int64) (bool, er
 		}
 
 		// TODO sample and get average prices in the given hour time
-		price0, err := service.blockchain.GetSwappiTokenPriceAuto(nil, info.Token0.Address, service.config.Swappi)
+		price0, err := service.getPrice(nil, info.Token0.Address, false, priceCache)
 		if err != nil {
 			return false, errors.WithMessage(err, "Failed to get price of token0")
 		}
 
-		price1, err := service.blockchain.GetSwappiTokenPriceAuto(nil, info.Token1.Address, service.config.Swappi)
+		price1, err := service.getPrice(nil, info.Token1.Address, false, priceCache)
 		if err != nil {
 			return false, errors.WithMessage(err, "Failed to get price of token1")
 		}
@@ -138,7 +140,7 @@ func (service *Service) sync(ctx context.Context, hourTimestamp int64) (bool, er
 			})
 		}
 
-		priceLP, err := service.blockchain.GetSwappiTokenPriceLP(nil, info.TokenLP.Address, service.config.Swappi)
+		priceLP, err := service.getPrice(nil, info.TokenLP.Address, true, priceCache)
 		if err != nil {
 			return false, errors.WithMessage(err, "Failed to get price of LP token")
 		}
@@ -167,4 +169,22 @@ func (service *Service) sync(ctx context.Context, hourTimestamp int64) (bool, er
 	}).Info("Succeeded to handle trade and liquidity events")
 
 	return true, nil
+}
+
+func (service *Service) getPrice(opts *bind.CallOpts, token common.Address, isLP bool, cache map[common.Address]decimal.Decimal) (price decimal.Decimal, err error) {
+	if price, ok := cache[token]; ok {
+		return price, nil
+	}
+
+	if isLP {
+		price, err = service.blockchain.GetSwappiTokenPriceLP(opts, token, service.config.Swappi)
+	} else {
+		price, err = service.blockchain.GetSwappiTokenPriceAuto(opts, token, service.config.Swappi)
+	}
+
+	if err == nil {
+		cache[token] = price
+	}
+
+	return
 }
