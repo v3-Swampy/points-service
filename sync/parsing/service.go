@@ -115,13 +115,13 @@ func (service *Service) sync(ctx context.Context, hourTimestamp int64) (bool, er
 		}
 
 		// TODO sample and get average prices in the given hour time
-		price0, ok, err := service.blockchain.GetSwappiTokenPriceAuto(nil, info.Token0.Address, service.config.Swappi)
-		if err != nil || !ok {
+		price0, err := service.blockchain.GetSwappiTokenPriceAuto(nil, info.Token0.Address, service.config.Swappi)
+		if err != nil {
 			return false, errors.WithMessage(err, "Failed to get price of token0")
 		}
 
-		price1, ok, err := service.blockchain.GetSwappiTokenPriceAuto(nil, info.Token1.Address, service.config.Swappi)
-		if err != nil || !ok {
+		price1, err := service.blockchain.GetSwappiTokenPriceAuto(nil, info.Token1.Address, service.config.Swappi)
+		if err != nil {
 			return false, errors.WithMessage(err, "Failed to get price of token1")
 		}
 
@@ -138,7 +138,7 @@ func (service *Service) sync(ctx context.Context, hourTimestamp int64) (bool, er
 			})
 		}
 
-		priceLP, err := service.blockchain.GetTokenPriceLP(info.TokenLP.Address)
+		priceLP, err := service.blockchain.GetSwappiTokenPriceLP(nil, info.TokenLP.Address, service.config.Swappi)
 		if err != nil {
 			return false, errors.WithMessage(err, "Failed to get price of LP token")
 		}
