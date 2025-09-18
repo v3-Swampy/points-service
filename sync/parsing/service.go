@@ -13,24 +13,24 @@ import (
 	"github.com/v3-Swampy/points-service/sync/blockchain"
 )
 
-type ContractParsingConfig struct {
+type Config struct {
 	Endpoint          string
 	NextHourTimestamp int64         // unix timestamp in seconds that truncated by hour
 	PollInterval      time.Duration `default:"1m"`
 	Pools             []string
 }
 
-type ContractParsingService struct {
+type Service struct {
 	*Client
 
-	config ContractParsingConfig
+	config Config
 
 	handler sync.EventHandler
 
 	blockchain *blockchain.Blockchain
 }
 
-func NewContractParsingService(config ContractParsingConfig, handler sync.EventHandler, client *web3go.Client) (*ContractParsingService, error) {
+func NewService(config Config, handler sync.EventHandler, client *web3go.Client) (*Service, error) {
 	if config.NextHourTimestamp%3600 > 0 {
 		return nil, errors.Errorf("Invalid NextHourTimestamp value %v", config.NextHourTimestamp)
 	}
@@ -44,7 +44,7 @@ func NewContractParsingService(config ContractParsingConfig, handler sync.EventH
 		return nil, errors.WithMessagef(err, "Failed to create RPC client")
 	}
 
-	return &ContractParsingService{
+	return &Service{
 		Client:     contractParsingClient,
 		config:     config,
 		handler:    handler,
@@ -52,7 +52,7 @@ func NewContractParsingService(config ContractParsingConfig, handler sync.EventH
 	}, nil
 }
 
-func (service *ContractParsingService) Run(ctx context.Context, wg *stdSync.WaitGroup) {
+func (service *Service) Run(ctx context.Context, wg *stdSync.WaitGroup) {
 	defer wg.Done()
 
 	// TODO load `next` value from DB or default configured
@@ -75,7 +75,7 @@ func (service *ContractParsingService) Run(ctx context.Context, wg *stdSync.Wait
 	}
 }
 
-func (service *ContractParsingService) sync(ctx context.Context, hourTimestamp int64) (bool, error) {
+func (service *Service) sync(ctx context.Context, hourTimestamp int64) (bool, error) {
 	var tradeEvents []sync.TradeEvent
 	var liquidityEvents []sync.LiquidityEvent
 
