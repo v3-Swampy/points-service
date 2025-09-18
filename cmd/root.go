@@ -2,9 +2,10 @@ package cmd
 
 import (
 	"context"
+	"github.com/Conflux-Chain/go-conflux-util/store"
+	"github.com/v3-Swampy/points-service/model"
 	"sync"
 
-	apiUtil "github.com/Conflux-Chain/go-conflux-util/api"
 	"github.com/Conflux-Chain/go-conflux-util/cmd"
 	"github.com/Conflux-Chain/go-conflux-util/config"
 	"github.com/Conflux-Chain/go-conflux-util/log"
@@ -32,9 +33,10 @@ func start(*cobra.Command, []string) {
 	_, cancel := context.WithCancel(context.Background())
 	var wg sync.WaitGroup
 
-	apiUtil.MustServeFromViper(api.Routes)
+	storeConfig := store.MustNewConfigFromViper()
+	db := storeConfig.MustOpenOrCreate(model.Tables...)
 
-	logrus.Info("Service started")
+	go api.MustServeFromViper(db)
 
 	cmd.GracefulShutdown(&wg, cancel)
 }
