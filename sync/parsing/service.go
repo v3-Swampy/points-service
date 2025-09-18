@@ -5,6 +5,7 @@ import (
 	stdSync "sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/openweb3/web3go"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
@@ -37,6 +38,12 @@ func NewService(config Config, handler sync.EventHandler, client *web3go.Client)
 
 	if len(config.Pools) == 0 {
 		return nil, errors.New("Pools not specified")
+	}
+
+	for _, v := range config.Pools {
+		if !common.IsHexAddress(v) {
+			return nil, errors.Errorf("Invalid hex address %v", v)
+		}
 	}
 
 	contractParsingClient, err := NewClient(config.Endpoint)
@@ -101,7 +108,7 @@ func (service *Service) sync(ctx context.Context, hourTimestamp int64) (bool, er
 		}
 
 		// construct events to handle
-		info, err := service.blockchain.GetPoolInfo(pool)
+		info, err := service.blockchain.GetPairTokenInfo(common.HexToAddress(pool))
 		if err != nil {
 			return false, errors.WithMessage(err, "Failed to get pool info")
 		}
@@ -122,7 +129,7 @@ func (service *Service) sync(ctx context.Context, hourTimestamp int64) (bool, er
 				PoolEvent: sync.PoolEvent{
 					Timestamp: hourTimestamp,
 					User:      v.UserAddress,
-					Pool:      pool,
+					Pool:      info,
 				},
 				Value0: decimal.NewFromBigInt(v.Token0Volumes.ToInt(), -int32(info.Token0.Decimals)).Mul(price0),
 				Value1: decimal.NewFromBigInt(v.Token1Volumes.ToInt(), -int32(info.Token1.Decimals)).Mul(price1),
@@ -140,7 +147,7 @@ func (service *Service) sync(ctx context.Context, hourTimestamp int64) (bool, er
 				PoolEvent: sync.PoolEvent{
 					Timestamp: hourTimestamp,
 					User:      v.UserAddress,
-					Pool:      pool,
+					Pool:      info,
 				},
 				ValueSecs: decimal.NewFromBigInt(v.LiquiditySeconds.ToInt(), -int32(info.TokenLP.Decimals)).Mul(priceLP),
 			})

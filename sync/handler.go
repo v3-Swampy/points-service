@@ -2,12 +2,13 @@ package sync
 
 import (
 	"github.com/shopspring/decimal"
+	"github.com/v3-Swampy/points-service/sync/blockchain"
 )
 
 type PoolEvent struct {
 	Timestamp int64  // unix timestamp in seconds
 	User      string // user address, e.g. trader or liquidity provider
-	Pool      string // pool address
+	Pool      blockchain.PoolInfo
 }
 
 type TradeEvent struct {
