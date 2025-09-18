@@ -24,6 +24,12 @@ type PoolInfo struct {
 	Token1  TokenInfo
 }
 
+type SwappiAddresses struct {
+	Factory common.Address
+	USDT    common.Address
+	WCFX    common.Address
+}
+
 type Blockchain struct {
 	caller         bind.ContractCaller
 	tokenInfoCache sync.Map
@@ -108,9 +114,79 @@ func (bc *Blockchain) GetPairTokenInfo(pairToken common.Address) (PoolInfo, erro
 	return info, nil
 }
 
-func (bc *Blockchain) GetTokenPrice(token common.Address) (decimal.Decimal, error) {
-	// TODO
-	return decimal.NewFromFloat(1), nil
+func (bc *Blockchain) GetSwappiTokenPriceAuto(opts *bind.CallOpts, token common.Address, addresses SwappiAddresses) (decimal.Decimal, bool, error) {
+	// try to get price by token/USDT
+	price, ok, err := bc.GetSwappiTokenPrice(opts, addresses.Factory, token, addresses.USDT)
+	if err != nil {
+		return decimal.Zero, false, errors.WithMessage(err, "Failed to get price by token/USDT")
+	}
+
+	if ok {
+		return price, true, nil
+	}
+
+	// otherwise, try to get price by token/WCFX/USDT
+	wcfxPrice, ok, err := bc.GetSwappiTokenPrice(opts, addresses.Factory, token, addresses.WCFX)
+	if err != nil {
+		return decimal.Zero, false, errors.WithMessage(err, "Failed to get price by token/WCFX")
+	}
+
+	if !ok {
+		return decimal.Zero, false, nil
+	}
+
+	usdtPrice, ok, err := bc.GetSwappiTokenPrice(opts, addresses.Factory, addresses.WCFX, addresses.USDT)
+	if err != nil {
+		return decimal.Zero, false, errors.WithMessage(err, "Failed to get price by WCFX/USDT")
+	}
+
+	if !ok {
+		return decimal.Zero, false, nil
+	}
+
+	return wcfxPrice.Mul(usdtPrice), true, nil
+}
+
+func (bc *Blockchain) GetSwappiTokenPrice(opts *bind.CallOpts, swappiFactory, baseToken, quoteToken common.Address) (decimal.Decimal, bool, error) {
+	// get pair token from factory
+	factoryCaller, err := contract.NewSwappiFactoryCaller(swappiFactory, bc.caller)
+	if err != nil {
+		return decimal.Zero, false, errors.WithMessage(err, "Failed to create Factory caller")
+	}
+
+	pair, err := factoryCaller.GetPair(opts, baseToken, quoteToken)
+	if err != nil {
+		return decimal.Zero, false, errors.WithMessagef(err, "Failed to get pair from Swappi factory")
+	}
+
+	if pair.Cmp(common.Address{}) == 0 {
+		return decimal.Zero, false, nil
+	}
+
+	info, err := bc.GetPairTokenInfo(pair)
+	if err != nil {
+		return decimal.Zero, false, errors.WithMessage(err, "Failed to get pair token info")
+	}
+
+	// get reserves from pair
+	pairCaller, err := contract.NewSwappiPairCaller(pair, bc.caller)
+	if err != nil {
+		return decimal.Zero, false, errors.WithMessage(err, "Failed to create Pair caller")
+	}
+
+	reserves, err := pairCaller.GetReserves(opts)
+	if err != nil {
+		return decimal.Zero, false, errors.WithMessage(err, "Failed to get reserves from pair")
+	}
+
+	reserve0 := decimal.NewFromBigInt(reserves.Reserve0, -int32(info.Token0.Decimals))
+	reserve1 := decimal.NewFromBigInt(reserves.Reserve1, -int32(info.Token1.Decimals))
+
+	if info.Token0.Address == baseToken {
+		return reserve1.Div(reserve0), true, nil
+	}
+
+	return reserve0.Div(reserve1), true, nil
 }
 
 func (bc *Blockchain) GetTokenPriceLP(lpToken common.Address) (decimal.Decimal, error) {
