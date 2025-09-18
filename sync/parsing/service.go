@@ -19,6 +19,7 @@ type Config struct {
 	NextHourTimestamp int64         // unix timestamp in seconds that truncated by hour
 	PollInterval      time.Duration `default:"1m"`
 	Pools             []string
+	Swappi            blockchain.SwappiAddresses
 }
 
 type Service struct {
@@ -113,13 +114,14 @@ func (service *Service) sync(ctx context.Context, hourTimestamp int64) (bool, er
 			return false, errors.WithMessage(err, "Failed to get pool info")
 		}
 
-		price0, err := service.blockchain.GetTokenPrice(info.Token0.Address)
-		if err != nil {
+		// TODO sample and get average prices in the given hour time
+		price0, ok, err := service.blockchain.GetSwappiTokenPriceAuto(nil, info.Token0.Address, service.config.Swappi)
+		if err != nil || !ok {
 			return false, errors.WithMessage(err, "Failed to get price of token0")
 		}
 
-		price1, err := service.blockchain.GetTokenPrice(info.Token1.Address)
-		if err != nil {
+		price1, ok, err := service.blockchain.GetSwappiTokenPriceAuto(nil, info.Token1.Address, service.config.Swappi)
+		if err != nil || !ok {
 			return false, errors.WithMessage(err, "Failed to get price of token1")
 		}
 
