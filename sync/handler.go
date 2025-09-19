@@ -26,5 +26,5 @@ type LiquidityEvent struct {
 }
 
 type EventHandler interface {
-	OnEventBatch(trades []TradeEvent, liquidities []LiquidityEvent) error
+	OnEventBatch(hourTimestamp int64, trades []TradeEvent, liquidities []LiquidityEvent) error
 }

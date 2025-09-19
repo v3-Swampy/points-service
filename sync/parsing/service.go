@@ -164,7 +164,7 @@ func (service *Service) sync(ctx context.Context, hourTimestamp int64) (bool, er
 		}
 	}
 
-	if err := service.handler.OnEventBatch(tradeEvents, liquidityEvents); err != nil {
+	if err := service.handler.OnEventBatch(hourTimestamp, tradeEvents, liquidityEvents); err != nil {
 		return false, errors.WithMessage(err, "Failed to handle trade and liquidity events")
 	}
 
