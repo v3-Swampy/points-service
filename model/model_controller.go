@@ -43,10 +43,15 @@ type UserInfo struct {
 	LiquidityPoints decimal.Decimal `json:"liquidityPoints"`
 }
 
+type PoolParamInfo struct {
+	Address         string `json:"address"`
+	Token0Symbol    string `json:"token0Symbol"`
+	Token1Symbol    string `json:"token1Symbol"`
+	TradeWeight     uint8  `json:"tradeWeight"`
+	LiquidityWeight uint8  `json:"liquidityWeight"`
+}
+
 type PoolInfo struct {
-	Address         string          `json:"address"`
-	Name            string          `json:"name"`
-	Tvl             decimal.Decimal `json:"tvl"`
-	TradePoints     decimal.Decimal `json:"tradePoints"`
-	LiquidityPoints decimal.Decimal `json:"liquidityPoints"`
+	PoolParamInfo
+	Tvl decimal.Decimal `json:"tvl"`
 }

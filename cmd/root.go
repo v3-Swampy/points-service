@@ -42,10 +42,17 @@ func start(*cobra.Command, []string) {
 	db := storeConfig.MustOpenOrCreate(model.Tables...)
 	store := store.NewStore(db)
 
-	// init stat service
-	var serviceConfig service.Config
-	viper.MustUnmarshalKey("service", &serviceConfig)
-	statService := service.NewStatService(serviceConfig, store)
+	// init stat services
+	statService := service.NewStatService(store)
+
+	// init pools
+	paramsService := service.NewPoolParamService(store)
+	list, err := paramsService.List()
+	cmd.FatalIfErr(err, "Failed to get pools")
+	pools := make([]string, len(list))
+	for _, pool := range list {
+		pools = append(pools, pool.Address)
+	}
 
 	// init blockchain client
 	var blockchainConfig struct {
@@ -59,9 +66,7 @@ func start(*cobra.Command, []string) {
 	// start sync service
 	var syncConfig parsing.Config
 	viper.MustUnmarshalKey("sync", &syncConfig)
-	for pool := range serviceConfig.PoolWeights {
-		syncConfig.Pools = append(syncConfig.Pools, pool)
-	}
+	syncConfig.Pools = pools
 	syncService, err := parsing.NewService(syncConfig, statService, client)
 	cmd.FatalIfErr(err, "Failed to create sync service")
 	wg.Add(1)

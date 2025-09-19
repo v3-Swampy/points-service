@@ -7,7 +7,7 @@ import (
 	"github.com/v3-Swampy/points-service/sync/blockchain"
 )
 
-var Tables = []any{&User{}, &Pool{}, &Config{}}
+var Tables = []any{&User{}, &Pool{}, &PoolParams{}, &Config{}}
 
 type Model struct {
 	ID        uint64    `gorm:"primarykey" json:"id"`
@@ -18,8 +18,8 @@ type Model struct {
 type User struct {
 	Model
 	Address         string          `gorm:"size:64;not null;unique" json:"address"`
-	TradePoints     decimal.Decimal `gorm:"type:decimal(10,0);not null;index:idx_trade_points" json:"tradePoints"`
-	LiquidityPoints decimal.Decimal `gorm:"type:decimal(11,1);not null;index:idx_liquidity_points" json:"liquidityPoints"`
+	TradePoints     decimal.Decimal `gorm:"type:decimal(10,0);not null;default:0;index" json:"tradePoints"`
+	LiquidityPoints decimal.Decimal `gorm:"type:decimal(11,1);not null;default:0;index" json:"liquidityPoints"`
 }
 
 func NewUser(address string, tradePoints decimal.Decimal, liquidityPoints decimal.Decimal, time time.Time) *User {
@@ -39,9 +39,9 @@ type Pool struct {
 	Address         string          `gorm:"size:64;not null;unique" json:"address"`
 	Token0          string          `gorm:"size:64;not null" json:"token0"`
 	Token1          string          `gorm:"size:64;not null" json:"token1"`
-	Tvl             decimal.Decimal `gorm:"type:decimal(10,0);not null;index:idx_tvl" json:"tvl"`
-	TradePoints     decimal.Decimal `gorm:"type:decimal(10,0);not null;index:idx_trade_points" json:"tradePoints"`
-	LiquidityPoints decimal.Decimal `gorm:"type:decimal(11,1);not null;index:idx_liquidity_points" json:"liquidityPoints"`
+	Tvl             decimal.Decimal `gorm:"type:decimal(10,0);not null;default:0;index" json:"tvl"`
+	TradePoints     decimal.Decimal `gorm:"type:decimal(10,0);not null;default:0" json:"tradePoints"`
+	LiquidityPoints decimal.Decimal `gorm:"type:decimal(11,1);not null;default:0" json:"liquidityPoints"`
 
 	Token0Name     string `gorm:"size:128" json:"token0Name"`
 	Token0Symbol   string `gorm:"size:128" json:"token0Symbol"`
@@ -80,4 +80,11 @@ type Config struct {
 	Value     string `gorm:"size:1024;not null"`       // config value
 	CreatedAt time.Time
 	UpdatedAt time.Time
+}
+
+type PoolParams struct {
+	Model
+	Address         string `gorm:"size:64;not null;unique" json:"address"`
+	TradeWeight     uint8  `gorm:"not null;index" json:"tradeWeight"`
+	LiquidityWeight uint8  `gorm:"not null;index" json:"liquidityWeight"`
 }

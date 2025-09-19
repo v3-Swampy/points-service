@@ -1,8 +1,6 @@
 package api
 
 import (
-	"fmt"
-
 	"github.com/Conflux-Chain/go-conflux-util/api"
 	"github.com/Conflux-Chain/go-conflux-util/store"
 	"github.com/gin-gonic/gin"
@@ -24,6 +22,20 @@ func NewController(store *store.Store) *Controller {
 	}
 }
 
+// listUsers returns users in pagination view.
+//
+//	@Summary		List users
+//	@Description	List users in pagination view.
+//	@Tags			User
+//	@Accept			json
+//	@Produce		json
+//	@Param			offset		query		int																		false	"The number of skipped records, usually it's pageSize * (pageNumber - 1)"	minimum(0)				default(0)
+//	@Param			limit		query		int																		true	"The number of records displayed on the page"								minimum(1)				maximum(100)
+//	@Param			sort		query		string																	false	"Sort in ASC or DESC order by sortField"									Enums(asc, desc)		default(desc)
+//	@Param			sortField	query		string																	false	"The field used for sorting. The value is trade or liquidity"				Enums(trade, liquidity)	default(trade)
+//	@Success		200			{object}	api.BusinessError{data=model.PagingResultWithUpdatedAt[model.UserInfo]}	"Paged users"
+//	@Failure		600			{object}	api.BusinessError{data=string}											"Internal server error"
+//	@Router			/users		[get]
 func (controller *Controller) listUsers(c *gin.Context) (any, error) {
 	var input model.UserPagingRequest
 
@@ -58,6 +70,20 @@ func (controller *Controller) listUsers(c *gin.Context) (any, error) {
 	}, nil
 }
 
+// listPools returns pools in pagination view.
+//
+//	@Summary		List pools
+//	@Description	List pools in pagination view.
+//	@Tags			Pool
+//	@Accept			json
+//	@Produce		json
+//	@Param			offset		query		int															false	"The number of skipped records, usually it's pageSize * (pageNumber - 1)"	minimum(0)						default(0)
+//	@Param			limit		query		int															true	"The number of records displayed on the page"								minimum(1)						maximum(100)
+//	@Param			sort		query		string														false	"Sort in ASC or DESC order by sortField"									Enums(asc, desc)				default(desc)
+//	@Param			sortField	query		string														false	"The field used for sorting. The value is tvl, trade or liquidity"			Enums(tvl, trade, liquidity)	default(tvl)
+//	@Success		200			{object}	api.BusinessError{data=model.PagingResult[model.PoolInfo]}	"Paged pools"
+//	@Failure		600			{object}	api.BusinessError{data=string}								"Internal server error"
+//	@Router			/pools		[get]
 func (controller *Controller) listPools(c *gin.Context) (any, error) {
 	var input model.PoolPagingRequest
 
@@ -73,11 +99,14 @@ func (controller *Controller) listPools(c *gin.Context) (any, error) {
 	pools := make([]model.PoolInfo, 0)
 	for _, p := range list {
 		pool := model.PoolInfo{
-			Address:         p.Address,
-			Name:            fmt.Sprintf("%s/%s", p.Token0Symbol, p.Token1Symbol),
-			Tvl:             p.Tvl,
-			TradePoints:     p.TradePoints,
-			LiquidityPoints: p.LiquidityPoints,
+			PoolParamInfo: model.PoolParamInfo{
+				Address:         p.Address,
+				Token0Symbol:    p.Token0Symbol,
+				Token1Symbol:    p.Token1Symbol,
+				TradeWeight:     p.TradeWeight,
+				LiquidityWeight: p.LiquidityWeight,
+			},
+			Tvl: p.Tvl,
 		}
 		pools = append(pools, pool)
 	}

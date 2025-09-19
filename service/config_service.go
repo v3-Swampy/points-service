@@ -1,7 +1,6 @@
 package service
 
 import (
-	"encoding/json"
 	"time"
 
 	"github.com/Conflux-Chain/go-conflux-util/store"
@@ -81,57 +80,4 @@ func (cs *ConfigService) GetLastStatPointsTime() (string, error) {
 
 func (cs *ConfigService) UpsertLastStatPointsTime(updateTime time.Time, dbTx ...*gorm.DB) error {
 	return cs.StoreConfig(CfgKeyLastStatTimePoints, updateTime.Format(time.RFC3339), dbTx...)
-}
-
-// pool weight
-
-type PoolWeight struct {
-	Trade     *int8 `json:"trade"`
-	Liquidity *int8 `json:"liquidity"`
-}
-
-func (cs *ConfigService) GetPoolWeight(poolAddress string) (*PoolWeight, error) {
-	var cfg model.Config
-	err := cs.store.DB.Where("name = ?", CfxKeyPrefixPoolWeight+poolAddress).First(&cfg).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, nil
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	weight := PoolWeight{}
-	if err = json.Unmarshal([]byte(cfg.Value), &weight); err != nil {
-		return nil, err
-	}
-
-	return &weight, nil
-}
-
-func (cs *ConfigService) UpsertPoolWeight(poolAddress string, newWeight PoolWeight) error {
-	oldWeight, err := cs.GetPoolWeight(poolAddress)
-	if err != nil {
-		return err
-	}
-
-	var weight PoolWeight
-	if oldWeight == nil {
-		weight = newWeight
-	} else {
-		if newWeight.Trade != nil {
-			oldWeight.Trade = newWeight.Trade
-		}
-		if newWeight.Liquidity != nil {
-			oldWeight.Liquidity = newWeight.Liquidity
-		}
-		weight = *oldWeight
-	}
-
-	val, err := json.Marshal(weight)
-	if err != nil {
-		return errors.WithMessage(err, "failed to marshal pool weight")
-	}
-
-	return cs.StoreConfig(CfxKeyPrefixPoolWeight+poolAddress, string(val))
 }
