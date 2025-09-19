@@ -43,35 +43,29 @@ type Pool struct {
 	TradePoints     decimal.Decimal `gorm:"type:decimal(10,0);not null;index:idx_trade_points" json:"tradePoints"`
 	LiquidityPoints decimal.Decimal `gorm:"type:decimal(11,1);not null;index:idx_liquidity_points" json:"liquidityPoints"`
 
-	TokenLpName     string `gorm:"size:128" json:"tokenLpName"`
-	TokenLpSymbol   string `gorm:"size:128" json:"tokenLpSymbol"`
-	TokenLpDecimals uint8  `gorm:"" json:"tokenLpDecimals"`
-	Token0Name      string `gorm:"size:128" json:"token0Name"`
-	Token0Symbol    string `gorm:"size:128" json:"token0Symbol"`
-	Token0Decimals  uint8  `gorm:"" json:"token0Decimals"`
-	Token1Name      string `gorm:"size:128" json:"token1Name"`
-	Token1Symbol    string `gorm:"size:128" json:"token1Symbol"`
-	Token1Decimals  uint8  `gorm:"" json:"token1Decimals"`
+	Token0Name     string `gorm:"size:128" json:"token0Name"`
+	Token0Symbol   string `gorm:"size:128" json:"token0Symbol"`
+	Token0Decimals uint8  `gorm:"" json:"token0Decimals"`
+	Token1Name     string `gorm:"size:128" json:"token1Name"`
+	Token1Symbol   string `gorm:"size:128" json:"token1Symbol"`
+	Token1Decimals uint8  `gorm:"" json:"token1Decimals"`
 }
 
-func NewPool(pool blockchain.PoolInfo, tradePoints decimal.Decimal, liquidityPoints decimal.Decimal, time time.Time) *Pool {
+func NewPool(pool blockchain.PairInfo, tradePoints decimal.Decimal, liquidityPoints decimal.Decimal, time time.Time) *Pool {
 	return &Pool{
-		Address:         pool.TokenLP.Address.String(),
+		Address:         pool.Address.String(),
 		Token0:          pool.Token0.Address.String(),
 		Token1:          pool.Token1.Address.String(),
 		Tvl:             decimal.Zero, //TODO
 		TradePoints:     tradePoints,
 		LiquidityPoints: liquidityPoints,
 
-		TokenLpName:     pool.TokenLP.Name,
-		TokenLpSymbol:   pool.TokenLP.Symbol,
-		TokenLpDecimals: pool.TokenLP.Decimals,
-		Token0Name:      pool.Token0.Name,
-		Token0Symbol:    pool.Token0.Symbol,
-		Token0Decimals:  pool.Token0.Decimals,
-		Token1Name:      pool.Token1.Name,
-		Token1Symbol:    pool.Token1.Symbol,
-		Token1Decimals:  pool.Token1.Decimals,
+		Token0Name:     pool.Token0.Name,
+		Token0Symbol:   pool.Token0.Symbol,
+		Token0Decimals: pool.Token0.Decimals,
+		Token1Name:     pool.Token1.Name,
+		Token1Symbol:   pool.Token1.Symbol,
+		Token1Decimals: pool.Token1.Decimals,
 
 		Model: Model{
 			CreatedAt: time,

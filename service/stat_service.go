@@ -47,7 +47,7 @@ func (service *StatService) aggregateTrade(trades []sync.TradeEvent, users map[s
 	for _, trade := range trades {
 		statTime := time.Unix(trade.Timestamp, 0)
 		user := trade.User
-		pool := trade.Pool.TokenLP.Address.String()
+		pool := trade.Pool.Address.String()
 		tradeWeight := service.config.PoolWeights[pool].tradeWeight
 		tradePoints := trade.Value0.Add(trade.Value1).Mul(decimal.NewFromInt(tradeWeight))
 
@@ -71,7 +71,7 @@ func (service *StatService) aggregateLiquidity(liquidities []sync.LiquidityEvent
 	for _, liquidity := range liquidities {
 		statTime := time.Unix(liquidity.Timestamp, 0)
 		user := liquidity.User
-		pool := liquidity.Pool.TokenLP.Address.String()
+		pool := liquidity.Pool.Address.String()
 		liquidityWeight := service.config.PoolWeights[pool].liquidityWeight
 		liquidityPoints := liquidity.Value0Secs.Add(liquidity.Value1Secs).Mul(decimal.NewFromInt(liquidityWeight))
 
@@ -161,21 +161,22 @@ func (service *StatService) BatchDeltaUpsertPools(dbTx *gorm.DB, pools []*model.
 	var params []interface{}
 	size := len(pools)
 	for i, p := range pools {
-		placeholders += "(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+		placeholders += "(?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
 		if i != size-1 {
 			placeholders += ",\n\t\t\t"
 		}
 		params = append(params, []interface{}{
 			p.Address, p.Token0, p.Token1, p.Tvl, p.TradePoints, p.LiquidityPoints,
-			p.TokenLpName, p.TokenLpSymbol, p.TokenLpDecimals, p.Token0Name, p.Token0Symbol, p.Token0Decimals,
-			p.Token1Name, p.Token1Symbol, p.Token1Decimals, p.CreatedAt, p.UpdatedAt,
+			p.Token0Name, p.Token0Symbol, p.Token0Decimals,
+			p.Token1Name, p.Token1Symbol, p.Token1Decimals,
+			p.CreatedAt, p.UpdatedAt,
 		}...)
 	}
 
 	sqlString := fmt.Sprintf(`
 		insert into 
     		pools(address, token0, token1, tvl, trade_points, liquidity_points, 
-    		      token_lp_name, token_lp_symbol, token_lp_decimals, token0_name, token0_symbol, token0_decimals, 
+    		      token0_name, token0_symbol, token0_decimals, 
     		      token1_name, token1_symbol, token1_decimals, created_at, updated_at)
 		values
 			%s
@@ -185,10 +186,7 @@ func (service *StatService) BatchDeltaUpsertPools(dbTx *gorm.DB, pools []*model.
 			token1 = values(token1),
 			tvl = values(tvl),
 			trade_points = trade_points + values(trade_points),
-			liquidity_points = liquidity_points + values(liquidity_points),                             
-			token_lp_name = values(token_lp_name),
-			token_lp_symbol = values(token_lp_symbol),
-			token_lp_decimals = values(token_lp_decimals),
+			liquidity_points = liquidity_points + values(liquidity_points),
 			token0_name = values(token0_name),
 			token0_symbol = values(token0_symbol),
 			token0_decimals = values(token0_decimals),
