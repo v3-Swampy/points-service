@@ -12,44 +12,40 @@ import (
 	"gorm.io/gorm"
 )
 
-type PoolWeight struct {
-	tradeWeight     int64 `default:"1"`
-	liquidityWeight int64 `default:"1"`
-}
-
-type Config struct {
-	PoolWeights map[string]PoolWeight
-}
-
 type StatService struct {
-	config Config
+	config *ConfigService
 	store  *store.Store
 }
 
-func NewStatService(config Config, store *store.Store) *StatService {
+func NewStatService(store *store.Store) *StatService {
 	return &StatService{
-		config: config,
+		config: NewConfigService(store),
 		store:  store,
 	}
 }
 
-func (service *StatService) OnEventBatch(trades []sync.TradeEvent, liquidities []sync.LiquidityEvent) error {
+func (service *StatService) OnEventBatch(timestamp int64, trades []sync.TradeEvent, liquidities []sync.LiquidityEvent) error {
 	users := make(map[string]*model.User)
 	pools := make(map[string]*model.Pool)
 
 	service.aggregateTrade(trades, users, pools)
 	service.aggregateLiquidity(liquidities, users, pools)
 
-	return service.Store(users, pools)
+	return service.Store(timestamp, users, pools)
 }
 
-func (service *StatService) aggregateTrade(trades []sync.TradeEvent, users map[string]*model.User, pools map[string]*model.Pool) {
+func (service *StatService) aggregateTrade(trades []sync.TradeEvent, users map[string]*model.User, pools map[string]*model.Pool) error {
 	for _, trade := range trades {
 		statTime := time.Unix(trade.Timestamp, 0)
 		user := trade.User
 		pool := trade.Pool.Address.String()
-		tradeWeight := service.config.PoolWeights[pool].tradeWeight
-		tradePoints := trade.Value0.Add(trade.Value1).Mul(decimal.NewFromInt(tradeWeight))
+
+		weight, err := service.config.GetPoolWeight(pool)
+		if err != nil {
+			return err
+		}
+		tradeWeight := weight.Trade
+		tradePoints := trade.Value0.Add(trade.Value1).Mul(decimal.NewFromInt(int64(*tradeWeight)))
 
 		if u, exists := users[user]; exists {
 			u.TradePoints = u.TradePoints.Add(tradePoints)
@@ -65,15 +61,21 @@ func (service *StatService) aggregateTrade(trades []sync.TradeEvent, users map[s
 			pools[pool] = model.NewPool(trade.Pool, tradePoints, decimal.Zero, statTime)
 		}
 	}
+	return nil
 }
 
-func (service *StatService) aggregateLiquidity(liquidities []sync.LiquidityEvent, users map[string]*model.User, pools map[string]*model.Pool) {
+func (service *StatService) aggregateLiquidity(liquidities []sync.LiquidityEvent, users map[string]*model.User, pools map[string]*model.Pool) error {
 	for _, liquidity := range liquidities {
 		statTime := time.Unix(liquidity.Timestamp, 0)
 		user := liquidity.User
 		pool := liquidity.Pool.Address.String()
-		liquidityWeight := service.config.PoolWeights[pool].liquidityWeight
-		liquidityPoints := liquidity.Value0Secs.Add(liquidity.Value1Secs).Mul(decimal.NewFromInt(liquidityWeight))
+
+		weight, err := service.config.GetPoolWeight(pool)
+		if err != nil {
+			return err
+		}
+		liquidityWeight := weight.Trade
+		liquidityPoints := liquidity.Value0Secs.Add(liquidity.Value1Secs).Mul(decimal.NewFromInt(int64(*liquidityWeight)))
 
 		if u, exists := users[user]; exists {
 			u.LiquidityPoints = u.LiquidityPoints.Add(liquidityPoints)
@@ -89,9 +91,10 @@ func (service *StatService) aggregateLiquidity(liquidities []sync.LiquidityEvent
 			pools[pool] = model.NewPool(liquidity.Pool, decimal.Zero, liquidityPoints, statTime)
 		}
 	}
+	return nil
 }
 
-func (service *StatService) Store(users map[string]*model.User, pools map[string]*model.Pool) error {
+func (service *StatService) Store(timestamp int64, users map[string]*model.User, pools map[string]*model.Pool) error {
 	service.store.DB.Transaction(func(dbTx *gorm.DB) error {
 		if len(users) > 0 {
 			userArray := make([]*model.User, 0, len(users))
@@ -112,6 +115,13 @@ func (service *StatService) Store(users map[string]*model.User, pools map[string
 				return errors.WithMessage(err, "failed to batch delta upsert pools")
 			}
 		}
+
+		updateTime := time.Unix(timestamp, 0).Format(time.RFC3339)
+
+		if err := service.config.StoreConfig(CfgKeyLastStatTimePoints, updateTime, dbTx); err != nil {
+			return err
+		}
+
 		return nil
 	})
 

@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+
 	"github.com/Conflux-Chain/go-conflux-util/api"
 	"github.com/Conflux-Chain/go-conflux-util/store"
 	"github.com/gin-gonic/gin"
@@ -10,14 +11,16 @@ import (
 )
 
 type Controller struct {
-	userService *service.UserService
-	poolService *service.PoolService
+	userService   *service.UserService
+	poolService   *service.PoolService
+	configService *service.ConfigService
 }
 
 func NewController(store *store.Store) *Controller {
 	return &Controller{
-		userService: service.NewUserService(store),
-		poolService: service.NewPoolService(store),
+		userService:   service.NewUserService(store),
+		poolService:   service.NewPoolService(store),
+		configService: service.NewConfigService(store),
 	}
 }
 
@@ -43,9 +46,15 @@ func (controller *Controller) listUsers(c *gin.Context) (any, error) {
 		users = append(users, user)
 	}
 
-	return model.PagingResult[model.UserInfo]{
-		Total: total,
-		Items: users,
+	updatedAt, err := controller.configService.GetLastStatPointsTime()
+	if err != nil {
+		return nil, err
+	}
+
+	return model.PagingResultWithUpdatedAt[model.UserInfo]{
+		Total:     total,
+		Items:     users,
+		UpdatedAt: updatedAt,
 	}, nil
 }
 

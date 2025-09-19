@@ -1,8 +1,9 @@
 package model
 
 import (
-	"github.com/shopspring/decimal"
 	"strings"
+
+	"github.com/shopspring/decimal"
 )
 
 type PagingRequest struct {
@@ -28,6 +29,12 @@ type PoolPagingRequest struct {
 type PagingResult[T any] struct {
 	Total int64 `json:"total"`
 	Items []T   `json:"items"`
+}
+
+type PagingResultWithUpdatedAt[T any] struct {
+	Total     int64  `json:"total"`
+	Items     []T    `json:"items"`
+	UpdatedAt string `json:"updatedAt"`
 }
 
 type UserInfo struct {

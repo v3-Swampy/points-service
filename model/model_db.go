@@ -7,7 +7,7 @@ import (
 	"github.com/v3-Swampy/points-service/sync/blockchain"
 )
 
-var Tables = []any{&User{}, &Pool{}}
+var Tables = []any{&User{}, &Pool{}, &Config{}}
 
 type Model struct {
 	ID        uint64    `gorm:"primarykey" json:"id"`
@@ -72,4 +72,12 @@ func NewPool(pool blockchain.PairInfo, tradePoints decimal.Decimal, liquidityPoi
 			UpdatedAt: time,
 		},
 	}
+}
+
+type Config struct {
+	ID        uint32
+	Name      string `gorm:"unique;size:128;not null"` // config name
+	Value     string `gorm:"size:1024;not null"`       // config value
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
