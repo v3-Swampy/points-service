@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"github.com/Conflux-Chain/go-conflux-util/api"
 	"github.com/Conflux-Chain/go-conflux-util/store"
 	"github.com/gin-gonic/gin"
@@ -27,7 +28,25 @@ func (controller *Controller) listUsers(c *gin.Context) (any, error) {
 		return nil, api.ErrValidation(err)
 	}
 
-	return controller.userService.List(input)
+	total, list, err := controller.userService.List(input)
+	if err != nil {
+		return nil, err
+	}
+
+	users := make([]model.UserInfo, 0)
+	for _, u := range list {
+		user := model.UserInfo{
+			Address:         u.Address,
+			TradePoints:     u.TradePoints,
+			LiquidityPoints: u.LiquidityPoints,
+		}
+		users = append(users, user)
+	}
+
+	return model.PagingResult[model.UserInfo]{
+		Total: total,
+		Items: users,
+	}, nil
 }
 
 func (controller *Controller) listPools(c *gin.Context) (any, error) {
@@ -37,5 +56,25 @@ func (controller *Controller) listPools(c *gin.Context) (any, error) {
 		return nil, api.ErrValidation(err)
 	}
 
-	return controller.poolService.List(input)
+	total, list, err := controller.poolService.List(input)
+	if err != nil {
+		return nil, err
+	}
+
+	pools := make([]model.PoolInfo, 0)
+	for _, p := range list {
+		pool := model.PoolInfo{
+			Address:         p.Address,
+			Name:            fmt.Sprintf("%s/%s", p.Token0Symbol, p.Token1Symbol),
+			Tvl:             p.Tvl,
+			TradePoints:     p.TradePoints,
+			LiquidityPoints: p.LiquidityPoints,
+		}
+		pools = append(pools, pool)
+	}
+
+	return model.PagingResult[model.PoolInfo]{
+		Total: total,
+		Items: pools,
+	}, nil
 }

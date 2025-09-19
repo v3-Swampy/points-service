@@ -1,6 +1,9 @@
 package model
 
-import "strings"
+import (
+	"github.com/shopspring/decimal"
+	"strings"
+)
 
 type PagingRequest struct {
 	Offset int    `form:"offset" binding:"min=0"`
@@ -20,4 +23,23 @@ type UserPagingRequest struct {
 type PoolPagingRequest struct {
 	PagingRequest
 	SortField string `form:"sortField,default=tvl" binding:"oneof=tvl trade liquidity"`
+}
+
+type PagingResult[T any] struct {
+	Total int64 `json:"total"`
+	Items []T   `json:"items"`
+}
+
+type UserInfo struct {
+	Address         string          `json:"address"`
+	TradePoints     decimal.Decimal `json:"tradePoints"`
+	LiquidityPoints decimal.Decimal `json:"liquidityPoints"`
+}
+
+type PoolInfo struct {
+	Address         string          `json:"address"`
+	Name            string          `json:"name"`
+	Tvl             decimal.Decimal `json:"tvl"`
+	TradePoints     decimal.Decimal `json:"tradePoints"`
+	LiquidityPoints decimal.Decimal `json:"liquidityPoints"`
 }

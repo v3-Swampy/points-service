@@ -18,8 +18,8 @@ type Model struct {
 type User struct {
 	Model
 	Address         string          `gorm:"size:64;not null;unique" json:"address"`
-	TradePoints     decimal.Decimal `gorm:"type:decimal(10,0);not null" json:"tradePoints"`
-	LiquidityPoints decimal.Decimal `gorm:"type:decimal(11,1);not null" json:"liquidityPoints"`
+	TradePoints     decimal.Decimal `gorm:"type:decimal(10,0);not null;index:idx_trade_points" json:"tradePoints"`
+	LiquidityPoints decimal.Decimal `gorm:"type:decimal(11,1);not null;index:idx_liquidity_points" json:"liquidityPoints"`
 }
 
 func NewUser(address string, tradePoints decimal.Decimal, liquidityPoints decimal.Decimal, time time.Time) *User {
@@ -39,9 +39,9 @@ type Pool struct {
 	Address         string          `gorm:"size:64;not null;unique" json:"address"`
 	Token0          string          `gorm:"size:64;not null" json:"token0"`
 	Token1          string          `gorm:"size:64;not null" json:"token1"`
-	Tvl             decimal.Decimal `gorm:"type:decimal(10,0);not null" json:"tvl"`
-	TradePoints     decimal.Decimal `gorm:"type:decimal(10,0);not null" json:"tradePoints"`
-	LiquidityPoints decimal.Decimal `gorm:"type:decimal(11,1);not null" json:"liquidityPoints"`
+	Tvl             decimal.Decimal `gorm:"type:decimal(10,0);not null;index:idx_tvl" json:"tvl"`
+	TradePoints     decimal.Decimal `gorm:"type:decimal(10,0);not null;index:idx_trade_points" json:"tradePoints"`
+	LiquidityPoints decimal.Decimal `gorm:"type:decimal(11,1);not null;index:idx_liquidity_points" json:"liquidityPoints"`
 
 	TokenLpName     string `gorm:"size:128" json:"tokenLpName"`
 	TokenLpSymbol   string `gorm:"size:128" json:"tokenLpSymbol"`

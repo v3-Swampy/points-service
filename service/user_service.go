@@ -18,8 +18,12 @@ func NewUserService(store *store.Store) *UserService {
 	}
 }
 
-func (service *UserService) List(request model.UserPagingRequest) (users []*model.User, err error) {
+func (service *UserService) List(request model.UserPagingRequest) (total int64, users []*model.User, err error) {
 	db := service.store.DB.Model(&model.User{})
+
+	if err = db.Count(&total).Error; err != nil {
+		return 0, nil, api.ErrDatabaseCause(err, "Failed to get count of users")
+	}
 
 	var orderBy string
 	if request.IsDesc() {
@@ -29,7 +33,7 @@ func (service *UserService) List(request model.UserPagingRequest) (users []*mode
 	}
 
 	if err = db.Order(orderBy).Offset(request.Offset).Limit(request.Limit).Find(&users).Error; err != nil {
-		return nil, api.ErrDatabaseCause(err, "Failed to get users")
+		return 0, nil, api.ErrDatabaseCause(err, "Failed to get users")
 	}
 
 	return

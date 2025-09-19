@@ -18,8 +18,12 @@ func NewPoolService(store *store.Store) *PoolService {
 	}
 }
 
-func (service *PoolService) List(request model.PoolPagingRequest) (pools []*model.Pool, err error) {
+func (service *PoolService) List(request model.PoolPagingRequest) (total int64, pools []*model.Pool, err error) {
 	db := service.store.DB.Model(&model.Pool{})
+
+	if err = db.Count(&total).Error; err != nil {
+		return 0, nil, api.ErrDatabaseCause(err, "Failed to get count of pools")
+	}
 
 	var sortField string
 	if request.SortField == "tvl" {
@@ -36,7 +40,7 @@ func (service *PoolService) List(request model.PoolPagingRequest) (pools []*mode
 	}
 
 	if err = db.Order(orderBy).Offset(request.Offset).Limit(request.Limit).Find(&pools).Error; err != nil {
-		return nil, api.ErrDatabaseCause(err, "Failed to get pools")
+		return 0, nil, api.ErrDatabaseCause(err, "Failed to get pools")
 	}
 
 	return

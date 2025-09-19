@@ -73,7 +73,7 @@ func (service *StatService) aggregateLiquidity(liquidities []sync.LiquidityEvent
 		user := liquidity.User
 		pool := liquidity.Pool.TokenLP.Address.String()
 		liquidityWeight := service.config.PoolWeights[pool].liquidityWeight
-		liquidityPoints := liquidity.ValueSecs.Mul(decimal.NewFromInt(liquidityWeight))
+		liquidityPoints := liquidity.Value0Secs.Add(liquidity.Value1Secs).Mul(decimal.NewFromInt(liquidityWeight))
 
 		if u, exists := users[user]; exists {
 			u.LiquidityPoints = u.LiquidityPoints.Add(liquidityPoints)
