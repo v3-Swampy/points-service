@@ -20,7 +20,11 @@ type Config struct {
 	NextHourTimestamp int64         // unix timestamp in seconds that truncated by hour
 	PollInterval      time.Duration `default:"1m"`
 	Pools             []string
-	Swappi            blockchain.SwappiAddresses
+	Swappi            struct {
+		Factory string
+		USDT    string
+		WCFX    string
+	}
 }
 
 type Service struct {
@@ -34,6 +38,10 @@ type Service struct {
 }
 
 func NewService(config Config, handler sync.EventHandler, client *web3go.Client) (*Service, error) {
+	if config.NextHourTimestamp == 0 {
+		config.NextHourTimestamp = time.Now().Truncate(time.Hour).Unix()
+	}
+
 	if config.NextHourTimestamp%3600 > 0 {
 		return nil, errors.Errorf("Invalid NextHourTimestamp value %v", config.NextHourTimestamp)
 	}
@@ -55,7 +63,11 @@ func NewService(config Config, handler sync.EventHandler, client *web3go.Client)
 
 	caller, _ := client.ToClientForContract()
 	erc20 := blockchain.NewERC20(caller)
-	swappi := blockchain.NewSwappi(caller, erc20, config.Swappi)
+	swappi := blockchain.NewSwappi(caller, erc20, blockchain.SwappiAddresses{
+		Factory: common.HexToAddress(config.Swappi.Factory),
+		USDT:    common.HexToAddress(config.Swappi.USDT),
+		WCFX:    common.HexToAddress(config.Swappi.WCFX),
+	})
 
 	return &Service{
 		Client:  contractParsingClient,

@@ -7,20 +7,19 @@ import (
 	"github.com/Conflux-Chain/go-conflux-util/viper"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
-	"gorm.io/gorm"
 )
 
-func MustServeFromViper(db *gorm.DB) {
+func MustServeFromViper(store *store.Store) {
 	var config api.Config
 	viper.MustUnmarshalKey("api", &config)
 
 	api.MustServe(config, func(router *gin.Engine) {
-		Routes(router, db)
+		Routes(router, store)
 	})
 }
 
-func Routes(router *gin.Engine, db *gorm.DB) {
-	controller := NewController(store.NewStore(db))
+func Routes(router *gin.Engine, store *store.Store) {
+	controller := NewController(store)
 
 	router.GET("/api/users", middleware.Wrap(controller.listUsers))
 	router.GET("/api/pools", middleware.Wrap(controller.listPools))
