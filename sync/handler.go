@@ -8,7 +8,7 @@ import (
 type PoolEvent struct {
 	Timestamp int64  // unix timestamp in seconds
 	User      string // user address, e.g. trader or liquidity provider
-	Pool      blockchain.PoolInfo
+	Pool      blockchain.PairInfo
 }
 
 type TradeEvent struct {

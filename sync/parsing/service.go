@@ -30,7 +30,7 @@ type Service struct {
 
 	handler sync.EventHandler
 
-	blockchain *blockchain.Blockchain
+	swappi *blockchain.Swappi
 }
 
 func NewService(config Config, handler sync.EventHandler, client *web3go.Client) (*Service, error) {
@@ -53,11 +53,15 @@ func NewService(config Config, handler sync.EventHandler, client *web3go.Client)
 		return nil, errors.WithMessagef(err, "Failed to create RPC client")
 	}
 
+	caller, _ := client.ToClientForContract()
+	erc20 := blockchain.NewERC20(caller)
+	swappi := blockchain.NewSwappi(caller, erc20, config.Swappi)
+
 	return &Service{
-		Client:     contractParsingClient,
-		config:     config,
-		handler:    handler,
-		blockchain: blockchain.NewBlockchain(client),
+		Client:  contractParsingClient,
+		config:  config,
+		handler: handler,
+		swappi:  swappi,
 	}, nil
 }
 
@@ -111,7 +115,7 @@ func (service *Service) sync(ctx context.Context, hourTimestamp int64) (bool, er
 		}
 
 		// construct events to handle
-		info, err := service.blockchain.GetPairTokenInfo(common.HexToAddress(pool))
+		info, err := service.swappi.GetPairInfo(common.HexToAddress(pool))
 		if err != nil {
 			return false, errors.WithMessage(err, "Failed to get pool info")
 		}
@@ -179,9 +183,9 @@ func (service *Service) getPrice(opts *bind.CallOpts, token common.Address, isLP
 	}
 
 	if isLP {
-		price, err = service.blockchain.GetSwappiTokenPriceLP(opts, token, service.config.Swappi)
+		price, err = service.swappi.GetPairTokenPrice(opts, token)
 	} else {
-		price, err = service.blockchain.GetSwappiTokenPriceAuto(opts, token, service.config.Swappi)
+		price, err = service.swappi.GetTokenPriceAuto(opts, token)
 	}
 
 	if err == nil {
