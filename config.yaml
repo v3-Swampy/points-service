@@ -1,2 +1,26 @@
 # Please refer to following file for basic configurations, e.g. log, alert, metrics and store:
 # https://github.com/Conflux-Chain/go-conflux-util/blob/main/config/config.yaml
+
+# Blockchain Configurations
+blockchain:
+  url: http://evm.confluxrpc.com
+
+# Sync Configurations
+# sync:
+#   endpoint: http://127.0.0.1:5678
+#   nextHourTimestamp: 0
+#   pollInterval: 1m
+#   swappi:
+#     factory: factory_address
+#     usdt: usdt_address
+#     wcfx: wcfx_address
+
+# Service Configurations
+# service:
+#   poolWeights:
+#     poolHexAddress1:
+#       tradeWeight: 1
+#       liquidityWeight: 1
+#     poolHexAddress2:
+#       tradeWeight: 2
+#       liquidityWeight: 2

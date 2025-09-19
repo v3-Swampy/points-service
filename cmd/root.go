@@ -8,10 +8,14 @@ import (
 	"github.com/Conflux-Chain/go-conflux-util/config"
 	"github.com/Conflux-Chain/go-conflux-util/log"
 	"github.com/Conflux-Chain/go-conflux-util/store"
+	"github.com/Conflux-Chain/go-conflux-util/viper"
+	"github.com/openweb3/web3go"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/v3-Swampy/points-service/api"
 	"github.com/v3-Swampy/points-service/model"
+	"github.com/v3-Swampy/points-service/service"
+	"github.com/v3-Swampy/points-service/sync/parsing"
 )
 
 var rootCmd = &cobra.Command{
@@ -30,13 +34,43 @@ func init() {
 func start(*cobra.Command, []string) {
 	logrus.Info("Starting service ...")
 
-	_, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	var wg sync.WaitGroup
 
+	// init database
 	storeConfig := store.MustNewConfigFromViper()
 	db := storeConfig.MustOpenOrCreate(model.Tables...)
+	store := store.NewStore(db)
 
-	go api.MustServeFromViper(db)
+	// init stat service
+	var serviceConfig service.Config
+	viper.MustUnmarshalKey("service", &serviceConfig)
+	statService := service.NewStatService(serviceConfig, store)
+
+	// init blockchain client
+	var blockchainConfig struct {
+		URL string
+	}
+	viper.MustUnmarshalKey("blockchain", &blockchainConfig)
+	client, err := web3go.NewClient(blockchainConfig.URL)
+	cmd.FatalIfErr(err, "Failed to create blockchain client")
+	defer client.Close()
+
+	// start sync service
+	var syncConfig parsing.Config
+	viper.MustUnmarshalKey("sync", &syncConfig)
+	for pool := range serviceConfig.PoolWeights {
+		syncConfig.Pools = append(syncConfig.Pools, pool)
+	}
+	syncService, err := parsing.NewService(syncConfig, statService, client)
+	cmd.FatalIfErr(err, "Failed to create sync service")
+	wg.Add(1)
+	go syncService.Run(ctx, &wg)
+
+	// start api
+	go api.MustServeFromViper(store)
+
+	logrus.Info("Service started")
 
 	cmd.GracefulShutdown(&wg, cancel)
 }
