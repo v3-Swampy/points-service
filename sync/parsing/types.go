@@ -14,6 +14,7 @@ type TradeData struct {
 }
 
 type LiquidityData struct {
-	UserAddress      string       `json:"userAddress"`
-	LiquiditySeconds *hexutil.Big `json:"liquiditySeconds"` // liquidity * seconds
+	UserAddress            string       `json:"userAddress"`
+	Token0LiquiditySeconds *hexutil.Big `json:"token0LiquiditySeconds"`
+	Token1LiquiditySeconds *hexutil.Big `json:"token1LiquiditySeconds"`
 }
