@@ -126,6 +126,8 @@ func (bc *Blockchain) GetPairTokenInfo(pairToken common.Address) (PoolInfo, erro
 }
 
 // GetSwappiTokenPrice calculates the Swappi price of given baseToken and quoteToken.
+//
+// It returns ErrSwappiPairNotFound if pair not found in given Swappi factory.
 func (bc *Blockchain) GetSwappiTokenPrice(opts *bind.CallOpts, swappiFactory, baseToken, quoteToken common.Address) (decimal.Decimal, error) {
 	// get pair token from factory
 	factoryCaller, err := contract.NewSwappiFactoryCaller(swappiFactory, bc.caller)
@@ -169,6 +171,8 @@ func (bc *Blockchain) GetSwappiTokenPrice(opts *bind.CallOpts, swappiFactory, ba
 }
 
 // GetSwappiTokenPriceAuto calculates the Swappi price of give token via token/USDT or token/CFX/USDT.
+//
+// It returns ErrSwappiPairNotFound if all token/USDT, token/WCFX, WCFX/USDT not found.
 func (bc *Blockchain) GetSwappiTokenPriceAuto(opts *bind.CallOpts, token common.Address, addresses SwappiAddresses) (decimal.Decimal, error) {
 	if token == addresses.USDT {
 		return decimal.NewFromInt(1), nil
