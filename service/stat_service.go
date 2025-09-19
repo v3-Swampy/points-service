@@ -40,11 +40,7 @@ func (service *StatService) OnEventBatch(trades []sync.TradeEvent, liquidities [
 	service.aggregateTrade(trades, users, pools)
 	service.aggregateLiquidity(liquidities, users, pools)
 
-	if err := service.Store(users, pools); err != nil {
-		return err
-	}
-
-	return nil
+	return service.Store(users, pools)
 }
 
 func (service *StatService) aggregateTrade(trades []sync.TradeEvent, users map[string]*model.User, pools map[string]*model.Pool) {
@@ -152,11 +148,7 @@ func (service *StatService) BatchDeltaUpsertUsers(dbTx *gorm.DB, users []*model.
 			updated_at = values(updated_at)
 	`, placeholders)
 
-	if err := db.Exec(sqlString, params...).Error; err != nil {
-		return err
-	}
-
-	return nil
+	return db.Exec(sqlString, params...).Error
 }
 
 func (service *StatService) BatchDeltaUpsertPools(dbTx *gorm.DB, pools []*model.Pool) error {
@@ -207,9 +199,5 @@ func (service *StatService) BatchDeltaUpsertPools(dbTx *gorm.DB, pools []*model.
 			updated_at = values(updated_at)
 	`, placeholders)
 
-	if err := db.Exec(sqlString, params...).Error; err != nil {
-		return err
-	}
-
-	return nil
+	return db.Exec(sqlString, params...).Error
 }

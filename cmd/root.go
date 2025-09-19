@@ -2,16 +2,16 @@ package cmd
 
 import (
 	"context"
-	"github.com/Conflux-Chain/go-conflux-util/store"
-	"github.com/v3-Swampy/points-service/model"
 	"sync"
 
 	"github.com/Conflux-Chain/go-conflux-util/cmd"
 	"github.com/Conflux-Chain/go-conflux-util/config"
 	"github.com/Conflux-Chain/go-conflux-util/log"
+	"github.com/Conflux-Chain/go-conflux-util/store"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/v3-Swampy/points-service/api"
+	"github.com/v3-Swampy/points-service/model"
 )
 
 var rootCmd = &cobra.Command{

@@ -27,12 +27,7 @@ func (controller *Controller) listUsers(c *gin.Context) (any, error) {
 		return nil, api.ErrValidation(err)
 	}
 
-	list, err := controller.userService.List(input)
-	if err != nil {
-		return nil, err
-	}
-
-	return list, nil
+	return controller.userService.List(input)
 }
 
 func (controller *Controller) listPools(c *gin.Context) (any, error) {
@@ -42,10 +37,5 @@ func (controller *Controller) listPools(c *gin.Context) (any, error) {
 		return nil, api.ErrValidation(err)
 	}
 
-	list, err := controller.poolService.List(input)
-	if err != nil {
-		return nil, err
-	}
-
-	return list, nil
+	return controller.poolService.List(input)
 }
