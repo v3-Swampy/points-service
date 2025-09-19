@@ -33,7 +33,7 @@ func NewStatService(config Config, store *store.Store) *StatService {
 	}
 }
 
-func (service *StatService) OnEventBatch(trades []sync.TradeEvent, liquidities []sync.LiquidityEvent) error {
+func (service *StatService) OnEventBatch(hourTimestamp int64, trades []sync.TradeEvent, liquidities []sync.LiquidityEvent) error {
 	users := make(map[string]*model.User)
 	pools := make(map[string]*model.Pool)
 
