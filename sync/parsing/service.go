@@ -140,10 +140,10 @@ func (service *Service) sync(ctx context.Context, hourTimestamp int64) (bool, er
 			})
 		}
 
-		priceLP, err := service.getPrice(nil, info.TokenLP.Address, true, priceCache)
-		if err != nil {
-			return false, errors.WithMessage(err, "Failed to get price of LP token")
-		}
+		// priceLP, err := service.getPrice(nil, info.TokenLP.Address, true, priceCache)
+		// if err != nil {
+		// 	return false, errors.WithMessage(err, "Failed to get price of LP token")
+		// }
 
 		// liquidity events
 		for _, v := range liquidities {
@@ -153,7 +153,9 @@ func (service *Service) sync(ctx context.Context, hourTimestamp int64) (bool, er
 					User:      v.UserAddress,
 					Pool:      info,
 				},
-				ValueSecs: decimal.NewFromBigInt(v.LiquiditySeconds.ToInt(), -int32(info.TokenLP.Decimals)).Mul(priceLP),
+				// ValueSecs: decimal.NewFromBigInt(v.LiquiditySeconds.ToInt(), -int32(info.TokenLP.Decimals)).Mul(priceLP),
+				Value0Secs: decimal.NewFromBigInt(v.Token0LiquiditySeconds.ToInt(), -int32(info.Token0.Decimals)).Mul(price0),
+				Value1Secs: decimal.NewFromBigInt(v.Token1LiquiditySeconds.ToInt(), -int32(info.Token1.Decimals)).Mul(price1),
 			})
 		}
 	}

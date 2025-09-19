@@ -21,7 +21,8 @@ type TradeEvent struct {
 type LiquidityEvent struct {
 	PoolEvent
 
-	ValueSecs decimal.Decimal // liquidity * price * secs
+	Value0Secs decimal.Decimal // liquidity0 * price * secs
+	Value1Secs decimal.Decimal // liquidity0 * price * secs
 }
 
 type EventHandler interface {
