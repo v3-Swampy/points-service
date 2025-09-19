@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	swappi = blockchain.SwappiAddresses{
+	swappiAddresses = blockchain.SwappiAddresses{
 		Factory: common.HexToAddress("0xE2a6F7c0ce4d5d300F97aA7E125455f5cd3342F5"),
 		USDT:    common.HexToAddress("0xfe97e85d13abd9c1c33384e796f10b73905637ce"),
 		WCFX:    common.HexToAddress("0x14b2d3bc65e74dae1030eafd8ac30c533c976a9b"),
@@ -26,30 +26,32 @@ func main() {
 	client := web3go.MustNewClient("http://evm.confluxrpc.com")
 	defer client.Close()
 
-	bc := blockchain.NewBlockchain(client)
+	caller, _ := client.ToClientForContract()
+	erc20 := blockchain.NewERC20(caller)
+	swappi := blockchain.NewSwappi(caller, erc20, swappiAddresses)
 
 	// get token info: USDT
-	token, err := bc.GetTokenInfo(swappi.USDT)
+	token, err := erc20.GetTokenInfo(swappiAddresses.USDT)
 	cmd.FatalIfErr(err, "Failed to get token info")
 	fmt.Println("Token info:", mustToJson(token))
 
 	// get LP token info: ABC/WCFX
-	pool, err := bc.GetPairTokenInfo(abcLP)
+	pool, err := swappi.GetPairInfo(abcLP)
 	cmd.FatalIfErr(err, "Failed to get pool info")
 	fmt.Println("Pool info:", mustToJson(pool))
 
 	// get ABC price
-	tokenPrice, err := bc.GetSwappiTokenPriceAuto(nil, abc, swappi)
+	tokenPrice, err := swappi.GetTokenPriceAuto(nil, abc)
 	cmd.FatalIfErr(err, "Failed to get token price in Swappi")
 	fmt.Println("Token price:", tokenPrice)
 
 	// get ABC LP price
-	lpPrice, err := bc.GetSwappiTokenPriceLP(nil, abcLP, swappi)
+	lpPrice, err := swappi.GetPairTokenPrice(nil, abcLP)
 	cmd.FatalIfErr(err, "Failed to get LP price in Swappi")
 	fmt.Println("LP price:", lpPrice)
 
 	// ABC-WCFX pool TVL
-	tvl, err := bc.GetSwappiPoolTVL(nil, abcLP, swappi)
+	tvl, err := swappi.GetPairTVL(nil, abcLP)
 	cmd.FatalIfErr(err, "Failed to get TVL in Swappi")
 	fmt.Println("Pool TVL:", tvl)
 }
