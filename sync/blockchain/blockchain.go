@@ -170,9 +170,32 @@ func (bc *Blockchain) GetSwappiTokenPrice(opts *bind.CallOpts, swappiFactory, ba
 	return reserve0.Div(reserve1), nil
 }
 
-// GetSwappiTokenPriceAuto calculates the Swappi price of give token via token/USDT or token/CFX/USDT.
+// GetSwappiTokenPriceRouted calculates the Swappi price of given routes.
 //
-// It returns ErrSwappiPairNotFound if all token/USDT, token/WCFX, WCFX/USDT not found.
+// It returns ErrSwappiPairNotFound if any pair not found in the routes or the number of given routes is less than 2.
+func (bc *Blockchain) GetSwappiTokenPriceRouted(opts *bind.CallOpts, swappiFactory common.Address, routes ...common.Address) (decimal.Decimal, error) {
+	numTokens := len(routes)
+	if numTokens < 2 {
+		return decimal.Zero, ErrSwappiPairNotFound
+	}
+
+	result := decimal.New(1, 0)
+
+	for i := 1; i < numTokens; i++ {
+		price, err := bc.GetSwappiTokenPrice(opts, swappiFactory, routes[i-1], routes[i])
+		if err != nil {
+			return decimal.Zero, errors.WithMessagef(err, "Failed to get price, i = %v", i)
+		}
+
+		result = result.Mul(price)
+	}
+
+	return result, nil
+}
+
+// GetSwappiTokenPriceAuto calculates the Swappi price of give token via token/CFX/USDT or token/USDT.
+//
+// It returns ErrSwappiPairNotFound if relevant pair not found.
 func (bc *Blockchain) GetSwappiTokenPriceAuto(opts *bind.CallOpts, token common.Address, addresses SwappiAddresses) (decimal.Decimal, error) {
 	if token == addresses.USDT {
 		return decimal.NewFromInt(1), nil
@@ -182,28 +205,23 @@ func (bc *Blockchain) GetSwappiTokenPriceAuto(opts *bind.CallOpts, token common.
 		return bc.GetSwappiTokenPrice(opts, addresses.Factory, addresses.WCFX, addresses.USDT)
 	}
 
-	// try to get price by token/USDT
-	price, err := bc.GetSwappiTokenPrice(opts, addresses.Factory, token, addresses.USDT)
+	// try to get price by token/WCFX/USDT with priority
+	price, err := bc.GetSwappiTokenPriceRouted(opts, addresses.Factory, token, addresses.WCFX, addresses.USDT)
 	if err == nil {
 		return price, nil
 	}
 
 	if err != ErrSwappiPairNotFound {
+		return decimal.Zero, errors.WithMessage(err, "Failed to get price by token/WCFX/USDT")
+	}
+
+	// otherwise, try to get price by token/USDT
+	price, err = bc.GetSwappiTokenPrice(opts, addresses.Factory, token, addresses.USDT)
+	if err != nil {
 		return decimal.Zero, errors.WithMessage(err, "Failed to get price by token/USDT")
 	}
 
-	// otherwise, try to get price by token/WCFX/USDT
-	wcfxPrice, err := bc.GetSwappiTokenPrice(opts, addresses.Factory, token, addresses.WCFX)
-	if err != nil {
-		return decimal.Zero, errors.WithMessage(err, "Failed to get price by token/WCFX")
-	}
-
-	usdtPrice, err := bc.GetSwappiTokenPrice(opts, addresses.Factory, addresses.WCFX, addresses.USDT)
-	if err != nil {
-		return decimal.Zero, errors.WithMessage(err, "Failed to get price by WCFX/USDT")
-	}
-
-	return wcfxPrice.Mul(usdtPrice), nil
+	return price, nil
 }
 
 // GetSwappiTokenPriceLP calculates the Swappi price of give LP token.
