@@ -3,6 +3,7 @@ package service
 import (
 	"github.com/Conflux-Chain/go-conflux-util/api"
 	"github.com/Conflux-Chain/go-conflux-util/store"
+	"github.com/sirupsen/logrus"
 	"github.com/v3-Swampy/points-service/model"
 )
 
@@ -71,4 +72,18 @@ func (service *PoolParamService) List() (params []*model.PoolParamInfo, err erro
 	}
 
 	return
+}
+
+func (service *PoolParamService) MustListPoolAddresses() []string {
+	list, err := service.List()
+	if err != nil {
+		logrus.WithError(err).Fatal("Failed to get pools")
+	}
+
+	pools := make([]string, len(list))
+	for _, pool := range list {
+		pools = append(pools, pool.Address)
+	}
+
+	return pools
 }

@@ -4,12 +4,21 @@ import (
 	"time"
 
 	"github.com/Conflux-Chain/go-conflux-util/store"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/openweb3/web3go"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 	"github.com/v3-Swampy/points-service/model"
 	"github.com/v3-Swampy/points-service/sync"
+	"github.com/v3-Swampy/points-service/sync/blockchain"
 	"gorm.io/gorm"
 )
+
+type SwappiConfig struct {
+	Factory string
+	USDT    string
+	WCFX    string
+}
 
 type StatService struct {
 	store  *store.Store
@@ -17,15 +26,25 @@ type StatService struct {
 	param  *PoolParamService
 	user   *UserService
 	pool   *PoolService
+	swappi *blockchain.Swappi
 }
 
-func NewStatService(store *store.Store) *StatService {
+func NewStatService(config SwappiConfig, client *web3go.Client, store *store.Store) *StatService {
+	caller, _ := client.ToClientForContract()
+	erc20 := blockchain.NewERC20(caller)
+	swappi := blockchain.NewSwappi(caller, erc20, blockchain.SwappiAddresses{
+		Factory: common.HexToAddress(config.Factory),
+		USDT:    common.HexToAddress(config.USDT),
+		WCFX:    common.HexToAddress(config.WCFX),
+	})
+
 	return &StatService{
 		store:  store,
 		config: NewConfigService(store),
 		param:  NewPoolParamService(store),
 		user:   NewUserService(store),
 		pool:   NewPoolService(store),
+		swappi: swappi,
 	}
 }
 
@@ -35,6 +54,7 @@ func (service *StatService) OnEventBatch(timestamp int64, trades []sync.TradeEve
 
 	service.aggregateTrade(trades, users, pools)
 	service.aggregateLiquidity(liquidities, users, pools)
+	service.UpdateTVL(pools)
 
 	return service.Store(timestamp, users, pools)
 }
@@ -94,6 +114,19 @@ func (service *StatService) aggregateLiquidity(event []sync.LiquidityEvent, user
 			p.UpdatedAt = statTime
 		} else {
 			pools[pool] = model.NewPool(liquidity.Pool, decimal.Zero, liquidityPoints, statTime)
+		}
+	}
+	return nil
+}
+
+func (service *StatService) UpdateTVL(pools map[string]*model.Pool) error {
+	if len(pools) > 0 {
+		for _, pool := range pools {
+			tvl, err := service.swappi.GetPairTVL(nil, common.HexToAddress(pool.Address))
+			if err != nil {
+				return err
+			}
+			pool.Tvl = tvl
 		}
 	}
 	return nil
