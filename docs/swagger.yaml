@@ -1,0 +1,183 @@
+definitions:
+  api.BusinessError:
+    properties:
+      code:
+        description: Code error code, 0 indicates success, otherwise business error
+          (e.g. user not found) or internal server error.
+        type: integer
+      data:
+        description: Data is the return value if success. Otherwise, it is concret
+          failure reason in string type.
+      message:
+        description: Message error message associated with `Code`.
+        type: string
+    type: object
+  model.PagingResult-model_PoolInfo:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.PoolInfo'
+        type: array
+      total:
+        type: integer
+    type: object
+  model.PagingResultWithUpdatedAt-model_UserInfo:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.UserInfo'
+        type: array
+      total:
+        type: integer
+      updatedAt:
+        type: string
+    type: object
+  model.PoolInfo:
+    properties:
+      address:
+        type: string
+      liquidityWeight:
+        type: integer
+      token0Symbol:
+        type: string
+      token1Symbol:
+        type: string
+      tradeWeight:
+        type: integer
+      tvl:
+        type: number
+    type: object
+  model.UserInfo:
+    properties:
+      address:
+        type: string
+      liquidityPoints:
+        type: number
+      tradePoints:
+        type: number
+    type: object
+info:
+  contact: {}
+paths:
+  /pools:
+    get:
+      consumes:
+      - application/json
+      description: List pools in pagination view.
+      parameters:
+      - default: 0
+        description: The number of skipped records, usually it's pageSize * (pageNumber
+          - 1)
+        in: query
+        minimum: 0
+        name: offset
+        type: integer
+      - description: The number of records displayed on the page
+        in: query
+        maximum: 100
+        minimum: 1
+        name: limit
+        required: true
+        type: integer
+      - default: desc
+        description: Sort in ASC or DESC order by sortField
+        enum:
+        - asc
+        - desc
+        in: query
+        name: sort
+        type: string
+      - default: tvl
+        description: The field used for sorting. The value is tvl, trade or liquidity
+        enum:
+        - tvl
+        - trade
+        - liquidity
+        in: query
+        name: sortField
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Paged pools
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.BusinessError'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.PagingResult-model_PoolInfo'
+              type: object
+        "600":
+          description: Internal server error
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.BusinessError'
+            - properties:
+                data:
+                  type: string
+              type: object
+      summary: List pools
+      tags:
+      - Pool
+  /users:
+    get:
+      consumes:
+      - application/json
+      description: List users in pagination view.
+      parameters:
+      - default: 0
+        description: The number of skipped records, usually it's pageSize * (pageNumber
+          - 1)
+        in: query
+        minimum: 0
+        name: offset
+        type: integer
+      - description: The number of records displayed on the page
+        in: query
+        maximum: 100
+        minimum: 1
+        name: limit
+        required: true
+        type: integer
+      - default: desc
+        description: Sort in ASC or DESC order by sortField
+        enum:
+        - asc
+        - desc
+        in: query
+        name: sort
+        type: string
+      - default: trade
+        description: The field used for sorting. The value is trade or liquidity
+        enum:
+        - trade
+        - liquidity
+        in: query
+        name: sortField
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Paged users
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.BusinessError'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.PagingResultWithUpdatedAt-model_UserInfo'
+              type: object
+        "600":
+          description: Internal server error
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.BusinessError'
+            - properties:
+                data:
+                  type: string
+              type: object
+      summary: List users
+      tags:
+      - User
+swagger: "2.0"

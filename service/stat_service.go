@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/Conflux-Chain/go-conflux-util/store"
@@ -12,44 +11,46 @@ import (
 	"gorm.io/gorm"
 )
 
-type PoolWeight struct {
-	tradeWeight     int64 `default:"1"`
-	liquidityWeight int64 `default:"1"`
-}
-
-type Config struct {
-	PoolWeights map[string]PoolWeight
-}
-
 type StatService struct {
-	config Config
 	store  *store.Store
+	config *ConfigService
+	param  *PoolParamService
+	user   *UserService
+	pool   *PoolService
 }
 
-func NewStatService(config Config, store *store.Store) *StatService {
+func NewStatService(store *store.Store) *StatService {
 	return &StatService{
-		config: config,
 		store:  store,
+		config: NewConfigService(store),
+		param:  NewPoolParamService(store),
+		user:   NewUserService(store),
+		pool:   NewPoolService(store),
 	}
 }
 
-func (service *StatService) OnEventBatch(hourTimestamp int64, trades []sync.TradeEvent, liquidities []sync.LiquidityEvent) error {
+func (service *StatService) OnEventBatch(timestamp int64, trades []sync.TradeEvent, liquidities []sync.LiquidityEvent) error {
 	users := make(map[string]*model.User)
 	pools := make(map[string]*model.Pool)
 
 	service.aggregateTrade(trades, users, pools)
 	service.aggregateLiquidity(liquidities, users, pools)
 
-	return service.Store(users, pools)
+	return service.Store(timestamp, users, pools)
 }
 
-func (service *StatService) aggregateTrade(trades []sync.TradeEvent, users map[string]*model.User, pools map[string]*model.Pool) {
-	for _, trade := range trades {
+func (service *StatService) aggregateTrade(event []sync.TradeEvent, users map[string]*model.User, pools map[string]*model.Pool) error {
+	for _, trade := range event {
 		statTime := time.Unix(trade.Timestamp, 0)
 		user := trade.User
 		pool := trade.Pool.Address.String()
-		tradeWeight := service.config.PoolWeights[pool].tradeWeight
-		tradePoints := trade.Value0.Add(trade.Value1).Mul(decimal.NewFromInt(tradeWeight))
+
+		weight, err := service.param.Get(pool)
+		if err != nil {
+			return err
+		}
+		tradeWeight := weight.TradeWeight
+		tradePoints := trade.Value0.Add(trade.Value1).Mul(decimal.NewFromInt(int64(tradeWeight)))
 
 		if u, exists := users[user]; exists {
 			u.TradePoints = u.TradePoints.Add(tradePoints)
@@ -65,15 +66,21 @@ func (service *StatService) aggregateTrade(trades []sync.TradeEvent, users map[s
 			pools[pool] = model.NewPool(trade.Pool, tradePoints, decimal.Zero, statTime)
 		}
 	}
+	return nil
 }
 
-func (service *StatService) aggregateLiquidity(liquidities []sync.LiquidityEvent, users map[string]*model.User, pools map[string]*model.Pool) {
-	for _, liquidity := range liquidities {
+func (service *StatService) aggregateLiquidity(event []sync.LiquidityEvent, users map[string]*model.User, pools map[string]*model.Pool) error {
+	for _, liquidity := range event {
 		statTime := time.Unix(liquidity.Timestamp, 0)
 		user := liquidity.User
 		pool := liquidity.Pool.Address.String()
-		liquidityWeight := service.config.PoolWeights[pool].liquidityWeight
-		liquidityPoints := liquidity.Value0Secs.Add(liquidity.Value1Secs).Mul(decimal.NewFromInt(liquidityWeight))
+
+		weight, err := service.param.Get(pool)
+		if err != nil {
+			return err
+		}
+		liquidityWeight := weight.LiquidityWeight
+		liquidityPoints := liquidity.Value0Secs.Add(liquidity.Value1Secs).Mul(decimal.NewFromInt(int64(liquidityWeight)))
 
 		if u, exists := users[user]; exists {
 			u.LiquidityPoints = u.LiquidityPoints.Add(liquidityPoints)
@@ -89,16 +96,17 @@ func (service *StatService) aggregateLiquidity(liquidities []sync.LiquidityEvent
 			pools[pool] = model.NewPool(liquidity.Pool, decimal.Zero, liquidityPoints, statTime)
 		}
 	}
+	return nil
 }
 
-func (service *StatService) Store(users map[string]*model.User, pools map[string]*model.Pool) error {
+func (service *StatService) Store(timestamp int64, users map[string]*model.User, pools map[string]*model.Pool) error {
 	service.store.DB.Transaction(func(dbTx *gorm.DB) error {
 		if len(users) > 0 {
 			userArray := make([]*model.User, 0, len(users))
 			for _, user := range users {
 				userArray = append(userArray, user)
 			}
-			if err := service.BatchDeltaUpsertUsers(service.store.DB, userArray); err != nil {
+			if err := service.user.BatchDeltaUpsert(userArray, dbTx); err != nil {
 				return errors.WithMessage(err, "failed to batch delta upsert users")
 			}
 		}
@@ -108,94 +116,19 @@ func (service *StatService) Store(users map[string]*model.User, pools map[string
 			for _, pool := range pools {
 				poolArray = append(poolArray, pool)
 			}
-			if err := service.BatchDeltaUpsertPools(service.store.DB, poolArray); err != nil {
+			if err := service.pool.BatchDeltaUpsert(poolArray, dbTx); err != nil {
 				return errors.WithMessage(err, "failed to batch delta upsert pools")
 			}
 		}
+
+		updateTime := time.Unix(timestamp, 0).Format(time.RFC3339)
+
+		if err := service.config.StoreConfig(CfgKeyLastStatTimePoints, updateTime, dbTx); err != nil {
+			return err
+		}
+
 		return nil
 	})
 
 	return nil
-}
-
-func (service *StatService) BatchDeltaUpsertUsers(dbTx *gorm.DB, users []*model.User) error {
-	db := service.store.DB
-	if dbTx != nil {
-		db = dbTx
-	}
-
-	var placeholders string
-	var params []interface{}
-	size := len(users)
-	for i, u := range users {
-		placeholders += "(?,?,?,?,?)"
-		if i != size-1 {
-			placeholders += ",\n\t\t\t"
-		}
-		params = append(params, []interface{}{u.Address, u.TradePoints, u.LiquidityPoints, u.CreatedAt, u.UpdatedAt}...)
-	}
-
-	sqlString := fmt.Sprintf(`
-		insert into 
-    		users(address, trade_points, liquidity_points, created_at, updated_at)
-		values
-			%s
-		on duplicate key update
-			address = values(address),
-			trade_points = trade_points + values(trade_points),
-			liquidity_points = liquidity_points + values(liquidity_points),
-			created_at = values(created_at),
-			updated_at = values(updated_at)
-	`, placeholders)
-
-	return db.Exec(sqlString, params...).Error
-}
-
-func (service *StatService) BatchDeltaUpsertPools(dbTx *gorm.DB, pools []*model.Pool) error {
-	db := service.store.DB
-	if dbTx != nil {
-		db = dbTx
-	}
-
-	var placeholders string
-	var params []interface{}
-	size := len(pools)
-	for i, p := range pools {
-		placeholders += "(?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
-		if i != size-1 {
-			placeholders += ",\n\t\t\t"
-		}
-		params = append(params, []interface{}{
-			p.Address, p.Token0, p.Token1, p.Tvl, p.TradePoints, p.LiquidityPoints,
-			p.Token0Name, p.Token0Symbol, p.Token0Decimals,
-			p.Token1Name, p.Token1Symbol, p.Token1Decimals,
-			p.CreatedAt, p.UpdatedAt,
-		}...)
-	}
-
-	sqlString := fmt.Sprintf(`
-		insert into 
-    		pools(address, token0, token1, tvl, trade_points, liquidity_points, 
-    		      token0_name, token0_symbol, token0_decimals, 
-    		      token1_name, token1_symbol, token1_decimals, created_at, updated_at)
-		values
-			%s
-		on duplicate key update
-			address = values(address),
-			token0 = values(token0),
-			token1 = values(token1),
-			tvl = values(tvl),
-			trade_points = trade_points + values(trade_points),
-			liquidity_points = liquidity_points + values(liquidity_points),
-			token0_name = values(token0_name),
-			token0_symbol = values(token0_symbol),
-			token0_decimals = values(token0_decimals),
-			token1_name = values(token1_name),
-			token1_symbol = values(token1_symbol),
-			token1_decimals = values(token1_decimals),
-			created_at = values(created_at),
-			updated_at = values(updated_at)
-	`, placeholders)
-
-	return db.Exec(sqlString, params...).Error
 }
