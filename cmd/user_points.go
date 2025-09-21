@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -60,6 +62,12 @@ func getUserPoints(cmd *cobra.Command, args []string) {
 	storeCtx := util.MustInitStoreContext()
 	defer storeCtx.Close()
 
+	err := validateUserPointsParams()
+	if err != nil {
+		logrus.WithField("config", weightParams).WithError(err).Info("Invalid command config")
+		return
+	}
+
 	user, err := storeCtx.UserService.Get(pointsParams.Address)
 	if err != nil {
 		logrus.WithError(err).Info("Failed to get user points")
@@ -87,6 +95,12 @@ func decrUserPoints(cmd *cobra.Command, args []string) {
 }
 
 func deltaUpsertUserPoints(storeCtx util.StoreContext, decrease bool) {
+	err := validateUserPointsParams()
+	if err != nil {
+		logrus.WithField("config", weightParams).WithError(err).Info("Invalid command config")
+		return
+	}
+
 	if pointsParams.TradePoints == 0 && pointsParams.LiquidityPoints == 0 {
 		logrus.Info("At least one of --trade or --liquidity is required.")
 		return
@@ -105,6 +119,13 @@ func deltaUpsertUserPoints(storeCtx util.StoreContext, decrease bool) {
 		return
 	}
 	logrus.Info("Succeed to update user points")
+}
+
+func validateUserPointsParams() error {
+	if !common.IsHexAddress(pointsParams.Address) {
+		return errors.Errorf("Invalid hex address of user %v", pointsParams.Address)
+	}
+	return nil
 }
 
 func hookUserPointsParams(cmd *cobra.Command, hookTrade, hookLiquidity bool) {
