@@ -3,6 +3,8 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/v3-Swampy/points-service/cmd/util"
@@ -60,6 +62,12 @@ func addPoolWeight(cmd *cobra.Command, args []string) {
 	storeCtx := util.MustInitStoreContext()
 	defer storeCtx.Close()
 
+	err := validatePoolWeightParams()
+	if err != nil {
+		logrus.WithField("config", weightParams).WithError(err).Info("Invalid command config")
+		return
+	}
+
 	if err := storeCtx.PoolParamService.
 		Upsert(weightParams.Address, weightParams.TradeWeight, weightParams.LiquidityWeight); err != nil {
 		logrus.WithError(err).Info("Failed to add pool weight values")
@@ -71,6 +79,12 @@ func addPoolWeight(cmd *cobra.Command, args []string) {
 func updatePoolWeight(cmd *cobra.Command, args []string) {
 	storeCtx := util.MustInitStoreContext()
 	defer storeCtx.Close()
+
+	err := validatePoolWeightParams()
+	if err != nil {
+		logrus.WithField("config", weightParams).WithError(err).Info("Invalid command config")
+		return
+	}
 
 	if weightParams.TradeWeight == 0 && weightParams.LiquidityWeight == 0 {
 		logrus.Info("At least one of --trade or --liquidity is required.")
@@ -109,6 +123,13 @@ func listPoolWeight(cmd *cobra.Command, args []string) {
 			"liquidityWeight": params.LiquidityWeight,
 		}).Info("Pool #", i)
 	}
+}
+
+func validatePoolWeightParams() error {
+	if !common.IsHexAddress(weightParams.Address) {
+		return errors.Errorf("Invalid hex address of pool %v", weightParams.Address)
+	}
+	return nil
 }
 
 func hookPoolWeightParams(cmd *cobra.Command, tradeWeightMust, liquidityWeightMust bool) {

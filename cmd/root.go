@@ -42,18 +42,6 @@ func start(*cobra.Command, []string) {
 	db := storeConfig.MustOpenOrCreate(model.Tables...)
 	store := store.NewStore(db)
 
-	// init stat services
-	statService := service.NewStatService(store)
-
-	// init pools
-	paramsService := service.NewPoolParamService(store)
-	list, err := paramsService.List()
-	cmd.FatalIfErr(err, "Failed to get pools")
-	pools := make([]string, len(list))
-	for _, pool := range list {
-		pools = append(pools, pool.Address)
-	}
-
 	// init blockchain client
 	var blockchainConfig struct {
 		URL string
@@ -62,6 +50,15 @@ func start(*cobra.Command, []string) {
 	client, err := web3go.NewClient(blockchainConfig.URL)
 	cmd.FatalIfErr(err, "Failed to create blockchain client")
 	defer client.Close()
+
+	// init stat services
+	var swappiConfig service.SwappiConfig
+	viper.MustUnmarshalKey("sync.swappi", &swappiConfig)
+	statService := service.NewStatService(swappiConfig, client, store)
+
+	// init pools
+	paramsService := service.NewPoolParamService(store)
+	pools := paramsService.MustListPoolAddresses()
 
 	// start sync service
 	var syncConfig parsing.Config
