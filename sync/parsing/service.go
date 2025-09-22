@@ -7,7 +7,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/openweb3/web3go"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
@@ -19,25 +18,18 @@ type Config struct {
 	Endpoint          string
 	NextHourTimestamp int64         // unix timestamp in seconds that truncated by hour
 	PollInterval      time.Duration `default:"1m"`
-	Pools             []string
-	Swappi            struct {
-		Factory string
-		USDT    string
-		WCFX    string
-	}
 }
 
 type Service struct {
 	*Client
 
-	config Config
-
+	config  Config
 	handler sync.EventHandler
-
-	swappi *blockchain.Swappi
+	swappi  *blockchain.Swappi
+	pools   []common.Address
 }
 
-func NewService(config Config, handler sync.EventHandler, client *web3go.Client) (*Service, error) {
+func NewService(config Config, handler sync.EventHandler, swappi *blockchain.Swappi, pools ...common.Address) (*Service, error) {
 	if config.NextHourTimestamp == 0 {
 		config.NextHourTimestamp = time.Now().Truncate(time.Hour).Unix()
 	}
@@ -46,14 +38,8 @@ func NewService(config Config, handler sync.EventHandler, client *web3go.Client)
 		return nil, errors.Errorf("Invalid NextHourTimestamp value %v", config.NextHourTimestamp)
 	}
 
-	if len(config.Pools) == 0 {
+	if len(pools) == 0 {
 		return nil, errors.New("Pools not specified")
-	}
-
-	for _, v := range config.Pools {
-		if !common.IsHexAddress(v) {
-			return nil, errors.Errorf("Invalid hex address %v", v)
-		}
 	}
 
 	contractParsingClient, err := NewClient(config.Endpoint)
@@ -61,19 +47,12 @@ func NewService(config Config, handler sync.EventHandler, client *web3go.Client)
 		return nil, errors.WithMessagef(err, "Failed to create RPC client")
 	}
 
-	caller, _ := client.ToClientForContract()
-	erc20 := blockchain.NewERC20(caller)
-	swappi := blockchain.NewSwappi(caller, erc20, blockchain.SwappiAddresses{
-		Factory: common.HexToAddress(config.Swappi.Factory),
-		USDT:    common.HexToAddress(config.Swappi.USDT),
-		WCFX:    common.HexToAddress(config.Swappi.WCFX),
-	})
-
 	return &Service{
 		Client:  contractParsingClient,
 		config:  config,
 		handler: handler,
 		swappi:  swappi,
+		pools:   pools,
 	}, nil
 }
 
@@ -105,7 +84,7 @@ func (service *Service) sync(ctx context.Context, hourTimestamp int64) (bool, er
 	var liquidityEvents []sync.LiquidityEvent
 	priceCache := make(map[common.Address]decimal.Decimal)
 
-	for _, pool := range service.config.Pools {
+	for _, pool := range service.pools {
 		// retrieve trade data
 		trades, err := service.GetHourlyTradeDataAll(ctx, pool, hourTimestamp)
 		if err != nil {
@@ -127,7 +106,7 @@ func (service *Service) sync(ctx context.Context, hourTimestamp int64) (bool, er
 		}
 
 		// construct events to handle
-		info, err := service.swappi.GetPairInfo(common.HexToAddress(pool))
+		info, err := service.swappi.GetPairInfo(pool)
 		if err != nil {
 			return false, errors.WithMessage(err, "Failed to get pool info")
 		}

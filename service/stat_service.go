@@ -5,7 +5,6 @@ import (
 
 	"github.com/Conflux-Chain/go-conflux-util/store"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/openweb3/web3go"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 	"github.com/v3-Swampy/points-service/blockchain"
@@ -29,15 +28,7 @@ type StatService struct {
 	swappi *blockchain.Swappi
 }
 
-func NewStatService(config SwappiConfig, client *web3go.Client, store *store.Store) *StatService {
-	caller, _ := client.ToClientForContract()
-	erc20 := blockchain.NewERC20(caller)
-	swappi := blockchain.NewSwappi(caller, erc20, blockchain.SwappiAddresses{
-		Factory: common.HexToAddress(config.Factory),
-		USDT:    common.HexToAddress(config.USDT),
-		WCFX:    common.HexToAddress(config.WCFX),
-	})
-
+func NewStatService(store *store.Store, swappi *blockchain.Swappi) *StatService {
 	return &StatService{
 		store:  store,
 		config: NewConfigService(store),
