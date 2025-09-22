@@ -59,12 +59,19 @@ func start(*cobra.Command, []string) {
 	// init services
 	services := service.NewServices(store, swappi)
 
-	// init sync service
-	var syncConfig parsing.Config
-	viper.MustUnmarshalKey("sync", &syncConfig)
 	var pools []common.Address
 	for _, v := range services.PoolParam.MustListPoolAddresses() {
 		pools = append(pools, common.HexToAddress(v))
+	}
+
+	lastStatTimestamp, err := services.Config.GetLastStatPointsTime()
+	cmd.FatalIfErr(err, "Failed to get last stat points time")
+
+	// init sync service
+	var syncConfig parsing.Config
+	viper.MustUnmarshalKey("sync", &syncConfig)
+	if lastStatTimestamp > 0 {
+		syncConfig.NextHourTimestamp = lastStatTimestamp + 3600
 	}
 	syncService, err := parsing.NewService(syncConfig, services.Stat, swappi, pools...)
 	cmd.FatalIfErr(err, "Failed to create sync service")

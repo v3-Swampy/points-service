@@ -59,7 +59,6 @@ func NewService(config Config, handler sync.EventHandler, swappi *blockchain.Swa
 func (service *Service) Run(ctx context.Context, wg *stdSync.WaitGroup) {
 	defer wg.Done()
 
-	// TODO load `next` value from DB or default configured
 	nextHourTimestamp := service.config.NextHourTimestamp
 
 	ticker := time.NewTicker(service.config.PollInterval)
