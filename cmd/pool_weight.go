@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -117,7 +115,6 @@ func listPoolWeight(cmd *cobra.Command, args []string) {
 	logrus.WithField("total", len(list)).Info("Pool weight values loaded:")
 	for i, params := range list {
 		logrus.WithFields(logrus.Fields{
-			"name":            fmt.Sprintf("%s/%s", params.Token0Symbol, params.Token1Symbol),
 			"address":         params.Address,
 			"tradeWeight":     params.TradeWeight,
 			"liquidityWeight": params.LiquidityWeight,

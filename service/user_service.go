@@ -89,7 +89,6 @@ func (service *UserService) BatchDeltaUpsert(users []*model.User, dbTx ...*gorm.
 			address = values(address),
 			trade_points = trade_points + values(trade_points),
 			liquidity_points = liquidity_points + values(liquidity_points),
-			created_at = values(created_at),           
 			updated_at = values(updated_at)                 
 	`, placeholders)
 
