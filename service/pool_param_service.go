@@ -99,7 +99,7 @@ func (service *PoolParamService) MustListPoolAddresses() []string {
 		logrus.WithError(err).Fatal("Failed to get pools")
 	}
 
-	pools := make([]string, len(list))
+	pools := make([]string, 0, len(list))
 	for _, pool := range list {
 		pools = append(pools, pool.Address)
 	}
