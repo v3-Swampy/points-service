@@ -7,7 +7,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
-	"github.com/v3-Swampy/points-service/sync/blockchain/contract"
+	"github.com/v3-Swampy/points-service/blockchain/contract"
 )
 
 var ErrSwappiPairNotFound = errors.New("Swappi pair not found in factory")

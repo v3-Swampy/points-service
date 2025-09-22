@@ -7,7 +7,7 @@ import (
 	"github.com/Conflux-Chain/go-conflux-util/cmd"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/openweb3/web3go"
-	"github.com/v3-Swampy/points-service/sync/blockchain"
+	"github.com/v3-Swampy/points-service/blockchain"
 )
 
 var (
