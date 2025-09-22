@@ -32,9 +32,9 @@ type PagingResult[T any] struct {
 }
 
 type PagingResultWithUpdatedAt[T any] struct {
-	Total     int64  `json:"total"`
-	Items     []T    `json:"items"`
-	UpdatedAt string `json:"updatedAt"`
+	Total     int64 `json:"total"`
+	Items     []T   `json:"items"`
+	UpdatedAt int64 `json:"updatedAt"`
 }
 
 type UserInfo struct {

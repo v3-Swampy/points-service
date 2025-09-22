@@ -1,7 +1,7 @@
 package service
 
 import (
-	"time"
+	"strconv"
 
 	"github.com/Conflux-Chain/go-conflux-util/store"
 	"github.com/pkg/errors"
@@ -12,7 +12,6 @@ import (
 
 const (
 	CfgKeyLastStatTimePoints = "last.stat.time.points"
-	CfxKeyPrefixPoolWeight   = "pool.weight."
 )
 
 type ConfigService struct {
@@ -40,7 +39,7 @@ func (cs *ConfigService) LoadConfig(confNames ...string) (map[string]interface{}
 	return res, nil
 }
 
-func (cs *ConfigService) StoreConfig(confName string, confVal interface{}, dbTx ...*gorm.DB) error {
+func (cs *ConfigService) StoreConfig(confName string, confVal string, dbTx ...*gorm.DB) error {
 	db := cs.store.DB
 	if len(dbTx) > 0 {
 		db = dbTx[0]
@@ -53,7 +52,7 @@ func (cs *ConfigService) StoreConfig(confName string, confVal interface{}, dbTx 
 		}),
 	}).Create(&model.Config{
 		Name:  confName,
-		Value: confVal.(string),
+		Value: confVal,
 	}).Error
 }
 
@@ -64,20 +63,25 @@ func (cs *ConfigService) DeleteConfig(confName string) (bool, error) {
 
 // last stat points time
 
-func (cs *ConfigService) GetLastStatPointsTime() (string, error) {
+func (cs *ConfigService) GetLastStatPointsTime() (int64, error) {
 	var cfg model.Config
 	err := cs.store.DB.Where("name = ?", CfgKeyLastStatTimePoints).First(&cfg).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return "", nil
+		return 0, nil
 	}
 
 	if err != nil {
-		return "", err
+		return 0, err
 	}
 
-	return cfg.Value, nil
+	timestamp, err := strconv.ParseInt(cfg.Value, 10, 64)
+	if err != nil {
+		return 0, err
+	}
+
+	return timestamp, nil
 }
 
-func (cs *ConfigService) UpsertLastStatPointsTime(updateTime time.Time, dbTx ...*gorm.DB) error {
-	return cs.StoreConfig(CfgKeyLastStatTimePoints, updateTime.Format(time.RFC3339), dbTx...)
+func (cs *ConfigService) UpsertLastStatPointsTime(timestamp int64, dbTx ...*gorm.DB) error {
+	return cs.StoreConfig(CfgKeyLastStatTimePoints, strconv.FormatInt(timestamp, 10), dbTx...)
 }

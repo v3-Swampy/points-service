@@ -52,9 +52,17 @@ func (service *StatService) OnEventBatch(timestamp int64, trades []sync.TradeEve
 	users := make(map[string]*model.User)
 	pools := make(map[string]*model.Pool)
 
-	service.aggregateTrade(trades, users, pools)
-	service.aggregateLiquidity(liquidities, users, pools)
-	service.UpdateTVL(pools)
+	if err := service.aggregateTrade(trades, users, pools); err != nil {
+		return err
+	}
+
+	if err := service.aggregateLiquidity(liquidities, users, pools); err != nil {
+		return err
+	}
+
+	if err := service.UpdateTVL(pools); err != nil {
+		return err
+	}
 
 	return service.Store(timestamp, users, pools)
 }
@@ -65,7 +73,7 @@ func (service *StatService) aggregateTrade(event []sync.TradeEvent, users map[st
 		user := trade.User
 		pool := trade.Pool.Address.String()
 
-		weight, err := service.param.GetOrDefault(pool, model.PoolParams{TradeWeight: 1, LiquidityWeight: 1})
+		weight, err := service.param.Get(pool)
 		if err != nil {
 			return err
 		}
@@ -94,7 +102,7 @@ func (service *StatService) aggregateLiquidity(event []sync.LiquidityEvent, user
 		user := liquidity.User
 		pool := liquidity.Pool.Address.String()
 
-		weight, err := service.param.GetOrDefault(pool, model.PoolParams{TradeWeight: 1, LiquidityWeight: 1})
+		weight, err := service.param.Get(pool)
 		if err != nil {
 			return err
 		}
@@ -131,7 +139,7 @@ func (service *StatService) UpdateTVL(pools map[string]*model.Pool) error {
 }
 
 func (service *StatService) Store(timestamp int64, users map[string]*model.User, pools map[string]*model.Pool) error {
-	service.store.DB.Transaction(func(dbTx *gorm.DB) error {
+	return service.store.DB.Transaction(func(dbTx *gorm.DB) error {
 		if len(users) > 0 {
 			userArray := make([]*model.User, 0, len(users))
 			for _, user := range users {
@@ -152,14 +160,10 @@ func (service *StatService) Store(timestamp int64, users map[string]*model.User,
 			}
 		}
 
-		updateTime := time.Unix(timestamp, 0).Format(time.RFC3339)
-
-		if err := service.config.StoreConfig(CfgKeyLastStatTimePoints, updateTime, dbTx); err != nil {
+		if err := service.config.UpsertLastStatPointsTime(timestamp, dbTx); err != nil {
 			return err
 		}
 
 		return nil
 	})
-
-	return nil
 }
