@@ -8,9 +8,9 @@ import (
 	"github.com/openweb3/web3go"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
+	"github.com/v3-Swampy/points-service/blockchain"
 	"github.com/v3-Swampy/points-service/model"
 	"github.com/v3-Swampy/points-service/sync"
-	"github.com/v3-Swampy/points-service/sync/blockchain"
 	"gorm.io/gorm"
 )
 

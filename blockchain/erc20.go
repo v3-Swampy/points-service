@@ -6,7 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
-	"github.com/v3-Swampy/points-service/sync/blockchain/contract"
+	"github.com/v3-Swampy/points-service/blockchain/contract"
 )
 
 type TokenInfo struct {

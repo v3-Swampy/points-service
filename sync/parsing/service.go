@@ -11,8 +11,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
+	"github.com/v3-Swampy/points-service/blockchain"
 	"github.com/v3-Swampy/points-service/sync"
-	"github.com/v3-Swampy/points-service/sync/blockchain"
 )
 
 type Config struct {

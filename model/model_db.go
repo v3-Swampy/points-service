@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
-	"github.com/v3-Swampy/points-service/sync/blockchain"
+	"github.com/v3-Swampy/points-service/blockchain"
 )
 
 var Tables = []any{&User{}, &Pool{}, &PoolParams{}, &Config{}}
