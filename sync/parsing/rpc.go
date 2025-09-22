@@ -3,6 +3,7 @@ package parsing
 import (
 	"context"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/openweb3/go-rpc-provider"
 	"github.com/openweb3/go-rpc-provider/interfaces"
 	providers "github.com/openweb3/go-rpc-provider/provider_wrapper"
@@ -24,7 +25,7 @@ func NewClient(url string) (*Client, error) {
 	}, nil
 }
 
-func (client *Client) GetHourlyTradeData(ctx context.Context, pool string, hourTimestamp int64, offset int, limit ...int) (*PagingResult[TradeData], error) {
+func (client *Client) GetHourlyTradeData(ctx context.Context, pool common.Address, hourTimestamp int64, offset int, limit ...int) (*PagingResult[TradeData], error) {
 	if len(limit) == 0 {
 		return providers.CallContext[*PagingResult[TradeData]](client.Provider, ctx, "parser_getHourlyTradeData", pool, hourTimestamp, offset)
 	}
@@ -32,7 +33,7 @@ func (client *Client) GetHourlyTradeData(ctx context.Context, pool string, hourT
 	return providers.CallContext[*PagingResult[TradeData]](client.Provider, ctx, "parser_getHourlyTradeData", pool, hourTimestamp, offset, limit[0])
 }
 
-func (client *Client) GetHourlyTradeDataAll(ctx context.Context, pool string, hourTimestamp int64) ([]TradeData, error) {
+func (client *Client) GetHourlyTradeDataAll(ctx context.Context, pool common.Address, hourTimestamp int64) ([]TradeData, error) {
 	var offset int
 	var all []TradeData
 
@@ -55,7 +56,7 @@ func (client *Client) GetHourlyTradeDataAll(ctx context.Context, pool string, ho
 	}
 }
 
-func (client *Client) GetHourlyLiquidityData(ctx context.Context, pool string, hourTimestamp int64, offset int, limit ...int) (*PagingResult[LiquidityData], error) {
+func (client *Client) GetHourlyLiquidityData(ctx context.Context, pool common.Address, hourTimestamp int64, offset int, limit ...int) (*PagingResult[LiquidityData], error) {
 	if len(limit) == 0 {
 		return providers.CallContext[*PagingResult[LiquidityData]](client.Provider, ctx, "parser_getHourlyLiquidityData", pool, hourTimestamp, offset)
 	}
@@ -63,7 +64,7 @@ func (client *Client) GetHourlyLiquidityData(ctx context.Context, pool string, h
 	return providers.CallContext[*PagingResult[LiquidityData]](client.Provider, ctx, "parser_getHourlyLiquidityData", pool, hourTimestamp, offset, limit[0])
 }
 
-func (client *Client) GetHourlyLiquidityDataAll(ctx context.Context, pool string, hourTimestamp int64) ([]LiquidityData, error) {
+func (client *Client) GetHourlyLiquidityDataAll(ctx context.Context, pool common.Address, hourTimestamp int64) ([]LiquidityData, error) {
 	var offset int
 	var all []LiquidityData
 

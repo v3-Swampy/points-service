@@ -2,24 +2,17 @@ package api
 
 import (
 	"github.com/Conflux-Chain/go-conflux-util/api"
-	"github.com/Conflux-Chain/go-conflux-util/store"
 	"github.com/gin-gonic/gin"
 	"github.com/v3-Swampy/points-service/model"
 	"github.com/v3-Swampy/points-service/service"
 )
 
 type Controller struct {
-	userService   *service.UserService
-	poolService   *service.PoolService
-	configService *service.ConfigService
+	services service.Services
 }
 
-func NewController(store *store.Store) *Controller {
-	return &Controller{
-		userService:   service.NewUserService(store),
-		poolService:   service.NewPoolService(store),
-		configService: service.NewConfigService(store),
-	}
+func NewController(services service.Services) *Controller {
+	return &Controller{services}
 }
 
 // listUsers returns users in pagination view.
@@ -43,7 +36,7 @@ func (controller *Controller) listUsers(c *gin.Context) (any, error) {
 		return nil, api.ErrValidation(err)
 	}
 
-	total, list, err := controller.userService.List(input)
+	total, list, err := controller.services.User.List(input)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +51,7 @@ func (controller *Controller) listUsers(c *gin.Context) (any, error) {
 		users = append(users, user)
 	}
 
-	updatedAt, err := controller.configService.GetLastStatPointsTime()
+	updatedAt, err := controller.services.Config.GetLastStatPointsTime()
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +84,7 @@ func (controller *Controller) listPools(c *gin.Context) (any, error) {
 		return nil, api.ErrValidation(err)
 	}
 
-	total, list, err := controller.poolService.List(input)
+	total, list, err := controller.services.Pool.List(input)
 	if err != nil {
 		return nil, err
 	}
