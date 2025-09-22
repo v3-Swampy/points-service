@@ -41,7 +41,7 @@ func (controller *Controller) listUsers(c *gin.Context) (any, error) {
 		return nil, err
 	}
 
-	users := make([]model.UserInfo, 0)
+	users := make([]model.UserInfo, 0, len(list))
 	for _, u := range list {
 		user := model.UserInfo{
 			Address:         u.Address,
@@ -89,7 +89,7 @@ func (controller *Controller) listPools(c *gin.Context) (any, error) {
 		return nil, err
 	}
 
-	pools := make([]model.PoolInfo, 0)
+	pools := make([]model.PoolInfo, 0, len(list))
 	for _, p := range list {
 		pool := model.PoolInfo{
 			PoolParamInfo: model.PoolParamInfo{
