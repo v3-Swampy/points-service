@@ -29,7 +29,7 @@ func (service *PoolService) BatchDeltaUpsert(pools []*model.Pool, dbTx ...*gorm.
 	var params []interface{}
 	size := len(pools)
 	for i, p := range pools {
-		placeholders += "(?,?,?,?,?,?,?,?,?,?,?,?)"
+		placeholders += "(?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
 		if i != size-1 {
 			placeholders += ",\n\t\t\t"
 		}
@@ -37,6 +37,7 @@ func (service *PoolService) BatchDeltaUpsert(pools []*model.Pool, dbTx ...*gorm.
 			p.Address, p.Token0, p.Token1, p.Tvl, p.TradePoints, p.LiquidityPoints,
 			p.Token0Name, p.Token0Symbol, p.Token0Decimals,
 			p.Token1Name, p.Token1Symbol, p.Token1Decimals,
+			p.CreatedAt, p.UpdatedAt,
 		}...)
 	}
 
@@ -44,7 +45,8 @@ func (service *PoolService) BatchDeltaUpsert(pools []*model.Pool, dbTx ...*gorm.
 		insert into 
     		pools(address, token0, token1, tvl, trade_points, liquidity_points, 
     		      token0_name, token0_symbol, token0_decimals, 
-    		      token1_name, token1_symbol, token1_decimals)
+    		      token1_name, token1_symbol, token1_decimals,
+    		      created_at, updated_at)
 		values
 			%s
 		on duplicate key update
@@ -59,7 +61,9 @@ func (service *PoolService) BatchDeltaUpsert(pools []*model.Pool, dbTx ...*gorm.
 			token0_decimals = values(token0_decimals),
 			token1_name = values(token1_name),
 			token1_symbol = values(token1_symbol),
-			token1_decimals = values(token1_decimals)
+			token1_decimals = values(token1_decimals),
+			created_at = values(created_at),
+			updated_at = values(updated_at)                      
 	`, placeholders)
 
 	return db.Exec(sqlString, params...).Error
