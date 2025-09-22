@@ -60,7 +60,7 @@ func (service *StatService) OnEventBatch(timestamp int64, trades []sync.TradeEve
 		return err
 	}
 
-	if err := service.UpdateTVL(pools); err != nil {
+	if err := service.aggregateTVL(pools); err != nil {
 		return err
 	}
 
@@ -125,7 +125,7 @@ func (service *StatService) aggregateLiquidity(event []sync.LiquidityEvent, user
 	return nil
 }
 
-func (service *StatService) UpdateTVL(pools map[string]*model.Pool) error {
+func (service *StatService) aggregateTVL(pools map[string]*model.Pool) error {
 	if len(pools) > 0 {
 		for _, pool := range pools {
 			tvl, err := service.swappi.GetPairTVL(nil, common.HexToAddress(pool.Address))
