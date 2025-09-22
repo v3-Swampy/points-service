@@ -4,6 +4,7 @@
 # Blockchain Configurations
 blockchain:
   url: http://evm.confluxrpc.com
+  scan: https://evmapi.confluxscan.org
 
 # Sync Configurations
 # sync:
