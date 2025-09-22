@@ -56,13 +56,6 @@ func (service *PoolService) BatchDeltaUpsert(pools []*model.Pool, dbTx ...*gorm.
 			tvl = values(tvl),
 			trade_points = trade_points + values(trade_points),
 			liquidity_points = liquidity_points + values(liquidity_points),
-			token0_name = values(token0_name),
-			token0_symbol = values(token0_symbol),
-			token0_decimals = values(token0_decimals),
-			token1_name = values(token1_name),
-			token1_symbol = values(token1_symbol),
-			token1_decimals = values(token1_decimals),
-			created_at = values(created_at),
 			updated_at = values(updated_at)                      
 	`, placeholders)
 

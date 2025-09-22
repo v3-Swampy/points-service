@@ -83,14 +83,10 @@ func (service *PoolParamService) Upsert(pool string, tradeWeight, liquidityWeigh
 		Updates(newParam).Error
 }
 
-func (service *PoolParamService) List() (params []*model.PoolParamInfo, err error) {
+func (service *PoolParamService) List() (params []*model.PoolParams, err error) {
 	db := service.store.DB.Model(&model.PoolParams{})
 
-	db = db.Select("pool_params.*, pools.token0_symbol, pools.token1_symbol").
-		Joins("INNER JOIN pools ON pool_params.address = pools.address").
-		Order("id ASC")
-
-	if err = db.Find(&params).Error; err != nil {
+	if err = db.Order("id ASC").Find(&params).Error; err != nil {
 		return nil, api.ErrDatabaseCause(err, "Failed to list pool params")
 	}
 
