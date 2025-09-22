@@ -73,22 +73,24 @@ func (service *UserService) BatchDeltaUpsert(users []*model.User, dbTx ...*gorm.
 	var params []interface{}
 	size := len(users)
 	for i, u := range users {
-		placeholders += "(?,?,?)"
+		placeholders += "(?,?,?,?,?)"
 		if i != size-1 {
 			placeholders += ",\n\t\t\t"
 		}
-		params = append(params, []interface{}{u.Address, u.TradePoints, u.LiquidityPoints}...)
+		params = append(params, []interface{}{u.Address, u.TradePoints, u.LiquidityPoints, u.CreatedAt, u.UpdatedAt}...)
 	}
 
 	sqlString := fmt.Sprintf(`
 		insert into 
-    		users(address, trade_points, liquidity_points)
+    		users(address, trade_points, liquidity_points, created_at, updated_at)
 		values
 			%s
 		on duplicate key update
 			address = values(address),
 			trade_points = trade_points + values(trade_points),
-			liquidity_points = liquidity_points + values(liquidity_points)
+			liquidity_points = liquidity_points + values(liquidity_points),
+			created_at = values(created_at),           
+			updated_at = values(updated_at)                 
 	`, placeholders)
 
 	return db.Exec(sqlString, params...).Error
