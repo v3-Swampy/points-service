@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/v3-Swampy/points-service/api"
 	"github.com/v3-Swampy/points-service/blockchain"
+	"github.com/v3-Swampy/points-service/blockchain/scan"
 	"github.com/v3-Swampy/points-service/model"
 	"github.com/v3-Swampy/points-service/service"
 	"github.com/v3-Swampy/points-service/sync/parsing"
@@ -42,6 +43,7 @@ func start(*cobra.Command, []string) {
 	// init blockchain
 	var blockchainConfig blockchain.Config
 	viper.MustUnmarshalKey("blockchain", &blockchainConfig)
+	scanApi := scan.NewApi(blockchainConfig.Scan)
 	client, err := web3go.NewClient(blockchainConfig.URL)
 	cmd.FatalIfErr(err, "Failed to create blockchain client")
 	defer client.Close()
@@ -73,7 +75,7 @@ func start(*cobra.Command, []string) {
 	if lastStatTimestamp > 0 {
 		syncConfig.NextHourTimestamp = lastStatTimestamp + 3600
 	}
-	syncService, err := parsing.NewService(syncConfig, services.Stat, swappi, pools...)
+	syncService, err := parsing.NewService(syncConfig, services.Stat, swappi, scanApi, pools...)
 	cmd.FatalIfErr(err, "Failed to create sync service")
 	wg.Add(1)
 	go syncService.Run(ctx, &wg)

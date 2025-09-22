@@ -2,6 +2,7 @@ package parsing
 
 import (
 	"context"
+	"math/big"
 	stdSync "sync"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 	"github.com/v3-Swampy/points-service/blockchain"
+	"github.com/v3-Swampy/points-service/blockchain/scan"
 	"github.com/v3-Swampy/points-service/sync"
 )
 
@@ -26,10 +28,11 @@ type Service struct {
 	config  Config
 	handler sync.EventHandler
 	swappi  *blockchain.Swappi
+	scan    *scan.Api
 	pools   []common.Address
 }
 
-func NewService(config Config, handler sync.EventHandler, swappi *blockchain.Swappi, pools ...common.Address) (*Service, error) {
+func NewService(config Config, handler sync.EventHandler, swappi *blockchain.Swappi, scan *scan.Api, pools ...common.Address) (*Service, error) {
 	if config.NextHourTimestamp == 0 {
 		config.NextHourTimestamp = time.Now().Truncate(time.Hour).Unix()
 	}
@@ -52,6 +55,7 @@ func NewService(config Config, handler sync.EventHandler, swappi *blockchain.Swa
 		config:  config,
 		handler: handler,
 		swappi:  swappi,
+		scan:    scan,
 		pools:   pools,
 	}, nil
 }
@@ -79,6 +83,16 @@ func (service *Service) Run(ctx context.Context, wg *stdSync.WaitGroup) {
 }
 
 func (service *Service) sync(ctx context.Context, hourTimestamp int64) (bool, error) {
+	minBlockNumber, err := service.scan.GetBlockNumberByTime(hourTimestamp, true)
+	if err != nil {
+		return false, errors.WithMessage(err, "Failed to query min block number by hour timestamp from scan")
+	}
+
+	maxBlockNumber, err := service.scan.GetBlockNumberByTime(hourTimestamp+3600, false)
+	if err != nil {
+		return false, errors.WithMessage(err, "Failed to query max block number by hour timestamp from scan")
+	}
+
 	var tradeEvents []sync.TradeEvent
 	var liquidityEvents []sync.LiquidityEvent
 	priceCache := make(map[common.Address]decimal.Decimal)
@@ -110,13 +124,12 @@ func (service *Service) sync(ctx context.Context, hourTimestamp int64) (bool, er
 			return false, errors.WithMessage(err, "Failed to get pool info")
 		}
 
-		// TODO sample and get average prices in the given hour time
-		price0, err := service.getPrice(nil, info.Token0.Address, false, priceCache)
+		price0, err := service.getPrice(minBlockNumber, maxBlockNumber, info.Token0.Address, priceCache)
 		if err != nil {
 			return false, errors.WithMessage(err, "Failed to get price of token0")
 		}
 
-		price1, err := service.getPrice(nil, info.Token1.Address, false, priceCache)
+		price1, err := service.getPrice(minBlockNumber, maxBlockNumber, info.Token1.Address, priceCache)
 		if err != nil {
 			return false, errors.WithMessage(err, "Failed to get price of token1")
 		}
@@ -167,20 +180,31 @@ func (service *Service) sync(ctx context.Context, hourTimestamp int64) (bool, er
 	return true, nil
 }
 
-func (service *Service) getPrice(opts *bind.CallOpts, token common.Address, isLP bool, cache map[common.Address]decimal.Decimal) (price decimal.Decimal, err error) {
+func (service *Service) getPrice(minBlockNumber, maxBlockNumber uint64, token common.Address, cache map[common.Address]decimal.Decimal) (decimal.Decimal, error) {
 	if price, ok := cache[token]; ok {
 		return price, nil
 	}
 
-	if isLP {
-		price, err = service.swappi.GetPairTokenPrice(opts, token)
-	} else {
-		price, err = service.swappi.GetTokenPriceAuto(opts, token)
+	sumPrices := decimal.Zero
+	step := (maxBlockNumber - minBlockNumber + 1) / 6
+	var count int64
+
+	for bn := minBlockNumber + step; bn < maxBlockNumber; bn++ {
+		opts := bind.CallOpts{
+			BlockNumber: new(big.Int).SetUint64(bn),
+		}
+
+		price, err := service.swappi.GetTokenPriceAuto(&opts, token)
+		if err != nil {
+			return decimal.Zero, errors.WithMessage(err, "Failed to sample token price")
+		}
+
+		sumPrices = sumPrices.Add(price)
+		count++
 	}
 
-	if err == nil {
-		cache[token] = price
-	}
+	price := sumPrices.Div(decimal.NewFromInt(count))
+	cache[token] = price
 
-	return
+	return price, nil
 }
