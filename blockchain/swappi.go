@@ -1,6 +1,7 @@
 package blockchain
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -16,6 +17,10 @@ type PairInfo struct {
 	Address common.Address
 	Token0  TokenInfo
 	Token1  TokenInfo
+}
+
+func (info PairInfo) String() string {
+	return fmt.Sprintf("%v/%v", info.Token0.Symbol, info.Token1.Symbol)
 }
 
 type SwappiAddresses struct {
@@ -180,7 +185,7 @@ func (swappi *Swappi) GetTokenPriceAuto(opts *bind.CallOpts, token common.Addres
 	return price, nil
 }
 
-// GetPairTVL calculates the TVL of given pair.
+// GetPairTVL calculates the TVL of given pair via reserves.
 func (swappi *Swappi) GetPairTVL(opts *bind.CallOpts, pair common.Address) (decimal.Decimal, error) {
 	info, err := swappi.GetPairInfo(pair)
 	if err != nil {
@@ -240,4 +245,39 @@ func (swappi *Swappi) GetPairTokenPrice(opts *bind.CallOpts, pair common.Address
 	}
 
 	return tvl.Div(supplyDecimal), nil
+}
+
+// GetPairTVL calculates the TVL of given pair via tokens balances hold by pool.
+func (swappi *Swappi) GetPairTVLByBalances(opts *bind.CallOpts, pair common.Address) (decimal.Decimal, error) {
+	info, err := swappi.GetPairInfo(pair)
+	if err != nil {
+		return decimal.Zero, errors.WithMessage(err, "Failed to get pair info")
+	}
+
+	// get prices
+	price0, err := swappi.GetTokenPriceAuto(opts, info.Token0.Address)
+	if err != nil {
+		return decimal.Zero, errors.WithMessage(err, "Failed to get price of token0")
+	}
+
+	price1, err := swappi.GetTokenPriceAuto(opts, info.Token1.Address)
+	if err != nil {
+		return decimal.Zero, errors.WithMessage(err, "Failed to get price of token1")
+	}
+
+	// get balances of pair
+	balance0, err := swappi.erc20.GetBalance(opts, info.Token0.Address, pair)
+	if err != nil {
+		return decimal.Zero, errors.WithMessage(err, "Failed to get token0 balance of pair")
+	}
+
+	balance1, err := swappi.erc20.GetBalance(opts, info.Token1.Address, pair)
+	if err != nil {
+		return decimal.Zero, errors.WithMessage(err, "Failed to get token1 balance of pair")
+	}
+
+	value0 := balance0.Mul(price0)
+	value1 := balance1.Mul(price1)
+
+	return value0.Add(value1), nil
 }
