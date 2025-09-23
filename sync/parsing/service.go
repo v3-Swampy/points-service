@@ -2,6 +2,7 @@ package parsing
 
 import (
 	"context"
+	sdtErrors "errors"
 	"math/big"
 	stdSync "sync"
 	"time"
@@ -258,7 +259,7 @@ func (service *Service) queryPrice(opts *bind.CallOpts, pool, token common.Addre
 		return price, nil
 	}
 
-	if err != blockchain.ErrSwappiPairNotFound {
+	if !sdtErrors.Is(err, blockchain.ErrSwappiPairNotFound) {
 		return decimal.Zero, errors.WithMessage(err, "Failed to get token price from Swappi")
 	}
 
