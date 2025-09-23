@@ -18,8 +18,8 @@ type Model struct {
 type User struct {
 	Model
 	Address         string          `gorm:"size:64;not null;unique" json:"address"`
-	TradePoints     decimal.Decimal `gorm:"type:decimal(10,0);not null;default:0;index" json:"tradePoints"`
-	LiquidityPoints decimal.Decimal `gorm:"type:decimal(11,1);not null;default:0;index" json:"liquidityPoints"`
+	TradePoints     decimal.Decimal `gorm:"type:decimal(20,0);not null;default:0;index" json:"tradePoints"`
+	LiquidityPoints decimal.Decimal `gorm:"type:decimal(21,1);not null;default:0;index" json:"liquidityPoints"`
 }
 
 func NewUser(address string, tradePoints decimal.Decimal, liquidityPoints decimal.Decimal, time time.Time) *User {
@@ -39,9 +39,9 @@ type Pool struct {
 	Address         string          `gorm:"size:64;not null;unique" json:"address"`
 	Token0          string          `gorm:"size:64;not null" json:"token0"`
 	Token1          string          `gorm:"size:64;not null" json:"token1"`
-	Tvl             decimal.Decimal `gorm:"type:decimal(10,0);not null;default:0;index" json:"tvl"`
-	TradePoints     decimal.Decimal `gorm:"type:decimal(10,0);not null;default:0" json:"tradePoints"`
-	LiquidityPoints decimal.Decimal `gorm:"type:decimal(11,1);not null;default:0" json:"liquidityPoints"`
+	Tvl             decimal.Decimal `gorm:"type:decimal(20,0);not null;default:0;index" json:"tvl"`
+	TradePoints     decimal.Decimal `gorm:"type:decimal(20,0);not null;default:0" json:"tradePoints"`
+	LiquidityPoints decimal.Decimal `gorm:"type:decimal(21,1);not null;default:0" json:"liquidityPoints"`
 
 	Token0Name     string `gorm:"size:128" json:"token0Name"`
 	Token0Symbol   string `gorm:"size:128" json:"token0Symbol"`
@@ -56,7 +56,7 @@ func NewPool(pool blockchain.PairInfo, tradePoints decimal.Decimal, liquidityPoi
 		Address:         pool.Address.String(),
 		Token0:          pool.Token0.Address.String(),
 		Token1:          pool.Token1.Address.String(),
-		Tvl:             decimal.Zero, //TODO
+		Tvl:             decimal.Zero,
 		TradePoints:     tradePoints,
 		LiquidityPoints: liquidityPoints,
 
