@@ -76,7 +76,7 @@ func start(*cobra.Command, []string) {
 	syncService, err := parsing.NewService(syncConfig, services.Stat, vswap, swappi, scanApi, pools...)
 	cmd.FatalIfErr(err, "Failed to create sync service")
 	wg.Add(1)
-	go syncService.Run(ctx, &wg, lastStatTimestamp)
+	go syncService.Run(ctx, &wg, lastStatTimestamp+3600)
 
 	// start api
 	go api.MustServeFromViper(services)
