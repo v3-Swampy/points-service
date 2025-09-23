@@ -67,8 +67,12 @@ func start(*cobra.Command, []string) {
 		pools = append(pools, common.HexToAddress(v))
 	}
 
+	var nextHourTimestamp int64
 	lastStatTimestamp, err := services.Config.GetLastStatPointsTime()
 	cmd.FatalIfErr(err, "Failed to get last stat points time")
+	if lastStatTimestamp > 0 {
+		nextHourTimestamp = lastStatTimestamp + 3600
+	}
 
 	// init sync service
 	var syncConfig parsing.Config
@@ -76,7 +80,7 @@ func start(*cobra.Command, []string) {
 	syncService, err := parsing.NewService(syncConfig, services.Stat, vswap, swappi, scanApi, pools...)
 	cmd.FatalIfErr(err, "Failed to create sync service")
 	wg.Add(1)
-	go syncService.Run(ctx, &wg, lastStatTimestamp+3600)
+	go syncService.Run(ctx, &wg, nextHourTimestamp)
 
 	// start api
 	go api.MustServeFromViper(services)
