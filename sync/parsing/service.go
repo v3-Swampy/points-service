@@ -29,12 +29,13 @@ type Service struct {
 
 	config  Config
 	handler sync.EventHandler
+	vswap   *blockchain.Swappi
 	swappi  *blockchain.Swappi
 	scan    *scan.Api
 	pools   []common.Address
 }
 
-func NewService(config Config, handler sync.EventHandler, swappi *blockchain.Swappi, scan *scan.Api, pools ...common.Address) (*Service, error) {
+func NewService(config Config, handler sync.EventHandler, vswap, swappi *blockchain.Swappi, scan *scan.Api, pools ...common.Address) (*Service, error) {
 	// TODO read from contract parser for the first hourTimestamp
 	if config.NextHourTimestamp == 0 {
 		config.NextHourTimestamp = time.Now().Truncate(time.Hour).Unix()
@@ -57,6 +58,7 @@ func NewService(config Config, handler sync.EventHandler, swappi *blockchain.Swa
 		Client:  contractParsingClient,
 		config:  config,
 		handler: handler,
+		vswap:   vswap,
 		swappi:  swappi,
 		scan:    scan,
 		pools:   pools,
@@ -145,7 +147,7 @@ func (service *Service) sync(ctx context.Context, hourTimestamp int64) (bool, er
 		}
 
 		// get pool info
-		info, err := service.swappi.GetPairInfo(pool)
+		info, err := service.vswap.GetPairInfo(pool)
 		if err != nil {
 			return false, errors.WithMessage(err, "Failed to get pool info")
 		}

@@ -76,7 +76,7 @@ func start(*cobra.Command, []string) {
 	if lastStatTimestamp > 0 {
 		syncConfig.NextHourTimestamp = lastStatTimestamp + 3600
 	}
-	syncService, err := parsing.NewService(syncConfig, services.Stat, swappi, scanApi, pools...)
+	syncService, err := parsing.NewService(syncConfig, services.Stat, vswap, swappi, scanApi, pools...)
 	cmd.FatalIfErr(err, "Failed to create sync service")
 	wg.Add(1)
 	go syncService.Run(ctx, &wg)
