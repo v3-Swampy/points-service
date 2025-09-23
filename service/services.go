@@ -13,12 +13,12 @@ type Services struct {
 	Stat      *StatService
 }
 
-func NewServices(store *store.Store, swappi *blockchain.Swappi) Services {
+func NewServices(store *store.Store, vswap *blockchain.Vswap) Services {
 	return Services{
 		Config:    NewConfigService(store),
 		PoolParam: NewPoolParamService(store),
 		Pool:      NewPoolService(store),
 		User:      NewUserService(store),
-		Stat:      NewStatService(store, swappi),
+		Stat:      NewStatService(store, vswap),
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
+	"github.com/shopspring/decimal"
 	"github.com/v3-Swampy/points-service/blockchain/contract"
 )
 
@@ -60,4 +61,24 @@ func (erc20 *ERC20) GetTokenInfo(token common.Address) (TokenInfo, error) {
 	erc20.cache.Store(token, info)
 
 	return info, nil
+}
+
+// GetBalance retrieves the token balance of specified account.
+func (erc20 *ERC20) GetBalance(opts *bind.CallOpts, token, account common.Address) (decimal.Decimal, error) {
+	caller, err := contract.NewERC20Caller(token, erc20.caller)
+	if err != nil {
+		return decimal.Zero, errors.WithMessage(err, "Failed to create ERC20 caller")
+	}
+
+	decimals, err := caller.Decimals(opts)
+	if err != nil {
+		return decimal.Zero, errors.WithMessage(err, "Failed to get decimals")
+	}
+
+	balance, err := caller.BalanceOf(opts, account)
+	if err != nil {
+		return decimal.Zero, errors.WithMessage(err, "Failed to get balance")
+	}
+
+	return decimal.NewFromBigInt(balance, -int32(decimals)), nil
 }

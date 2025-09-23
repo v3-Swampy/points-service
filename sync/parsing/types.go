@@ -8,13 +8,13 @@ type PagingResult[T any] struct {
 }
 
 type TradeData struct {
-	UserAddress   string       `json:"userAddress"`
-	Token0Volumes *hexutil.Big `json:"token0volumes"`
-	Token1Volumes *hexutil.Big `json:"token1volumes"`
+	UserAddress  string       `json:"user"`
+	Token0Volume *hexutil.Big `json:"token0Volume"`
+	Token1Volume *hexutil.Big `json:"token1Volume"`
 }
 
 type LiquidityData struct {
-	UserAddress            string       `json:"userAddress"`
+	UserAddress            string       `json:"user"`
 	Token0LiquiditySeconds *hexutil.Big `json:"token0LiquiditySeconds"`
 	Token1LiquiditySeconds *hexutil.Big `json:"token1LiquiditySeconds"`
 }

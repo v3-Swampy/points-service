@@ -1,6 +1,7 @@
 package blockchain
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -16,6 +17,10 @@ type PairInfo struct {
 	Address common.Address
 	Token0  TokenInfo
 	Token1  TokenInfo
+}
+
+func (info PairInfo) String() string {
+	return fmt.Sprintf("%v/%v", info.Token0.Symbol, info.Token1.Symbol)
 }
 
 type SwappiAddresses struct {
@@ -180,7 +185,7 @@ func (swappi *Swappi) GetTokenPriceAuto(opts *bind.CallOpts, token common.Addres
 	return price, nil
 }
 
-// GetPairTVL calculates the TVL of given pair.
+// GetPairTVL calculates the TVL of given pair via reserves.
 func (swappi *Swappi) GetPairTVL(opts *bind.CallOpts, pair common.Address) (decimal.Decimal, error) {
 	info, err := swappi.GetPairInfo(pair)
 	if err != nil {
@@ -213,31 +218,4 @@ func (swappi *Swappi) GetPairTVL(opts *bind.CallOpts, pair common.Address) (deci
 	value1 := decimal.NewFromBigInt(reserves.Reserve1, -int32(info.Token1.Decimals)).Mul(price1)
 
 	return value0.Add(value1), nil
-}
-
-// GetPairTokenPrice calculates the price of give pair token.
-func (swappi *Swappi) GetPairTokenPrice(opts *bind.CallOpts, pair common.Address) (decimal.Decimal, error) {
-	info, err := swappi.erc20.GetTokenInfo(pair)
-	if err != nil {
-		return decimal.Zero, errors.WithMessage(err, "Failed to get pair token info")
-	}
-
-	pairCaller, err := contract.NewSwappiPairCaller(pair, swappi.caller)
-	if err != nil {
-		return decimal.Zero, errors.WithMessage(err, "Failed to create Pair caller")
-	}
-
-	supply, err := pairCaller.TotalSupply(opts)
-	if err != nil {
-		return decimal.Zero, errors.WithMessage(err, "Failed to get total supply of pair")
-	}
-
-	supplyDecimal := decimal.NewFromBigInt(supply, -int32(info.Decimals))
-
-	tvl, err := swappi.GetPairTVL(opts, pair)
-	if err != nil {
-		return decimal.Zero, errors.WithMessage(err, "Failed to get pair TVL")
-	}
-
-	return tvl.Div(supplyDecimal), nil
 }

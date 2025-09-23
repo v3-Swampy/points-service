@@ -52,6 +52,7 @@ func start(*cobra.Command, []string) {
 	call, _ := client.ToClientForContract()
 	erc20 := blockchain.NewERC20(call)
 	swappi := blockchain.NewSwappi(call, erc20, blockchainConfig.Swappi.ToAddresses())
+	vswap := blockchain.NewVswap(swappi, common.HexToAddress(blockchainConfig.Vswap.WcfxUsdtPool))
 
 	// init database
 	storeConfig := store.MustNewConfigFromViper()
@@ -59,7 +60,7 @@ func start(*cobra.Command, []string) {
 	store := store.NewStore(db)
 
 	// init services
-	services := service.NewServices(store, swappi)
+	services := service.NewServices(store, vswap)
 
 	var pools []common.Address
 	for _, v := range services.PoolParam.MustListPoolAddresses() {
@@ -72,13 +73,10 @@ func start(*cobra.Command, []string) {
 	// init sync service
 	var syncConfig parsing.Config
 	viper.MustUnmarshalKey("sync", &syncConfig)
-	if lastStatTimestamp > 0 {
-		syncConfig.NextHourTimestamp = lastStatTimestamp + 3600
-	}
-	syncService, err := parsing.NewService(syncConfig, services.Stat, swappi, scanApi, pools...)
+	syncService, err := parsing.NewService(syncConfig, services.Stat, vswap, swappi, scanApi, pools...)
 	cmd.FatalIfErr(err, "Failed to create sync service")
 	wg.Add(1)
-	go syncService.Run(ctx, &wg)
+	go syncService.Run(ctx, &wg, lastStatTimestamp)
 
 	// start api
 	go api.MustServeFromViper(services)

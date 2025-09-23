@@ -25,6 +25,12 @@ type LiquidityEvent struct {
 	Value1Secs decimal.Decimal // liquidity0 * price * secs
 }
 
+type TimeInfo struct {
+	HourTimestamp  int64
+	MinBlockNumber uint64
+	MaxBlockNumber uint64
+}
+
 type EventHandler interface {
-	OnEventBatch(hourTimestamp int64, trades []TradeEvent, liquidities []LiquidityEvent) error
+	OnEventBatch(time TimeInfo, trades []TradeEvent, liquidities []LiquidityEvent) error
 }

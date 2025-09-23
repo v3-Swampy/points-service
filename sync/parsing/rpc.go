@@ -2,9 +2,9 @@ package parsing
 
 import (
 	"context"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/openweb3/go-rpc-provider"
 	"github.com/openweb3/go-rpc-provider/interfaces"
 	providers "github.com/openweb3/go-rpc-provider/provider_wrapper"
 	"github.com/pkg/errors"
@@ -15,22 +15,30 @@ type Client struct {
 }
 
 func NewClient(url string) (*Client, error) {
-	client, err := rpc.Dial(url)
+	option := providers.Option{
+		RequestTimeout: 5 * time.Second,
+	}
+
+	provider, err := providers.NewProviderWithOption(url, option)
 	if err != nil {
 		return nil, errors.WithMessagef(err, "Failed to dial %v", url)
 	}
 
 	return &Client{
-		Provider: client,
+		Provider: provider,
 	}, nil
+}
+
+func (client *Client) FirstTimestamp(ctx context.Context) (int64, error) {
+	return providers.CallContext[int64](client.Provider, ctx, "firstTimestamp")
 }
 
 func (client *Client) GetHourlyTradeData(ctx context.Context, pool common.Address, hourTimestamp int64, offset int, limit ...int) (*PagingResult[TradeData], error) {
 	if len(limit) == 0 {
-		return providers.CallContext[*PagingResult[TradeData]](client.Provider, ctx, "parser_getHourlyTradeData", pool, hourTimestamp, offset)
+		return providers.CallContext[*PagingResult[TradeData]](client.Provider, ctx, "getHourlyTradeData", pool, hourTimestamp, offset)
 	}
 
-	return providers.CallContext[*PagingResult[TradeData]](client.Provider, ctx, "parser_getHourlyTradeData", pool, hourTimestamp, offset, limit[0])
+	return providers.CallContext[*PagingResult[TradeData]](client.Provider, ctx, "getHourlyTradeData", pool, hourTimestamp, offset, limit[0])
 }
 
 func (client *Client) GetHourlyTradeDataAll(ctx context.Context, pool common.Address, hourTimestamp int64) ([]TradeData, error) {
@@ -48,7 +56,12 @@ func (client *Client) GetHourlyTradeDataAll(ctx context.Context, pool common.Add
 		}
 
 		offset += len(result.Data)
-		all = append(all, result.Data...)
+
+		if all == nil {
+			all = result.Data
+		} else {
+			all = append(all, result.Data...)
+		}
 
 		if len(all) == result.Total {
 			return all, nil
@@ -58,10 +71,10 @@ func (client *Client) GetHourlyTradeDataAll(ctx context.Context, pool common.Add
 
 func (client *Client) GetHourlyLiquidityData(ctx context.Context, pool common.Address, hourTimestamp int64, offset int, limit ...int) (*PagingResult[LiquidityData], error) {
 	if len(limit) == 0 {
-		return providers.CallContext[*PagingResult[LiquidityData]](client.Provider, ctx, "parser_getHourlyLiquidityData", pool, hourTimestamp, offset)
+		return providers.CallContext[*PagingResult[LiquidityData]](client.Provider, ctx, "getHourlyLiquidityData", pool, hourTimestamp, offset)
 	}
 
-	return providers.CallContext[*PagingResult[LiquidityData]](client.Provider, ctx, "parser_getHourlyLiquidityData", pool, hourTimestamp, offset, limit[0])
+	return providers.CallContext[*PagingResult[LiquidityData]](client.Provider, ctx, "getHourlyLiquidityData", pool, hourTimestamp, offset, limit[0])
 }
 
 func (client *Client) GetHourlyLiquidityDataAll(ctx context.Context, pool common.Address, hourTimestamp int64) ([]LiquidityData, error) {
@@ -79,7 +92,12 @@ func (client *Client) GetHourlyLiquidityDataAll(ctx context.Context, pool common
 		}
 
 		offset += len(result.Data)
-		all = append(all, result.Data...)
+
+		if all == nil {
+			all = result.Data
+		} else {
+			all = append(all, result.Data...)
+		}
 
 		if len(all) == result.Total {
 			return all, nil

@@ -5,23 +5,14 @@
 blockchain:
   url: http://evm.confluxrpc.com
   scan: https://evmapi.confluxscan.org
+  swappi:
+    factory: <factory_address>
+    usdt: <usdt_address>
+    wcfx: <wcfx_address>
+  vswap:
+    wcfxUsdtPool: <wcfx_usdt_pool_address>
 
 # Sync Configurations
 # sync:
 #   endpoint: http://127.0.0.1:5678
-#   nextHourTimestamp: 0
 #   pollInterval: 1m
-#   swappi:
-#     factory: factory_address
-#     usdt: usdt_address
-#     wcfx: wcfx_address
-
-# Service Configurations
-# service:
-#   poolWeights:
-#     poolHexAddress1:
-#       tradeWeight: 1
-#       liquidityWeight: 1
-#     poolHexAddress2:
-#       tradeWeight: 2
-#       liquidityWeight: 2
