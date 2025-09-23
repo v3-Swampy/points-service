@@ -66,7 +66,7 @@ func (service *StatService) aggregateTrade(event []sync.TradeEvent, users map[st
 		if err != nil {
 			return err
 		}
-		tradePoints := trade.Value0.Add(trade.Value1).Mul(decimal.NewFromInt(int64(weight.TradeWeight)))
+		tradePoints := trade.Value0.Add(trade.Value1).Div(decimal.NewFromInt(2)).Mul(decimal.NewFromInt(int64(weight.TradeWeight)))
 
 		if u, exists := users[user]; exists {
 			u.TradePoints = u.TradePoints.Add(tradePoints)
