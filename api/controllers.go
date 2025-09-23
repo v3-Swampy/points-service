@@ -94,6 +94,8 @@ func (controller *Controller) listPools(c *gin.Context) (any, error) {
 		pool := model.PoolInfo{
 			PoolParamInfo: model.PoolParamInfo{
 				Address:         p.Address,
+				Token0:          p.Token0,
+				Token1:          p.Token1,
 				Token0Symbol:    p.Token0Symbol,
 				Token1Symbol:    p.Token1Symbol,
 				TradeWeight:     p.TradeWeight,
