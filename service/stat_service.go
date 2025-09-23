@@ -101,7 +101,7 @@ func (service *StatService) aggregateLiquidity(event []sync.LiquidityEvent, user
 			u.LiquidityPoints = u.LiquidityPoints.Add(liquidityPoints)
 			u.UpdatedAt = statTime
 		} else {
-			model.NewUser(user, decimal.Zero, liquidityPoints, statTime)
+			users[user] = model.NewUser(user, decimal.Zero, liquidityPoints, statTime)
 		}
 
 		if p, exists := pools[pool]; exists {
