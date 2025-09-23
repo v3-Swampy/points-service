@@ -73,13 +73,10 @@ func start(*cobra.Command, []string) {
 	// init sync service
 	var syncConfig parsing.Config
 	viper.MustUnmarshalKey("sync", &syncConfig)
-	if lastStatTimestamp > 0 {
-		syncConfig.NextHourTimestamp = lastStatTimestamp + 3600
-	}
 	syncService, err := parsing.NewService(syncConfig, services.Stat, vswap, swappi, scanApi, pools...)
 	cmd.FatalIfErr(err, "Failed to create sync service")
 	wg.Add(1)
-	go syncService.Run(ctx, &wg)
+	go syncService.Run(ctx, &wg, lastStatTimestamp)
 
 	// start api
 	go api.MustServeFromViper(services)

@@ -15,5 +15,4 @@ blockchain:
 # Sync Configurations
 # sync:
 #   endpoint: http://127.0.0.1:5678
-#   nextHourTimestamp: 0
 #   pollInterval: 1m

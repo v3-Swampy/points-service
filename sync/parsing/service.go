@@ -20,9 +20,8 @@ import (
 var logger = logrus.WithField("module", "parsing")
 
 type Config struct {
-	Endpoint          string
-	NextHourTimestamp int64         // unix timestamp in seconds that truncated by hour
-	PollInterval      time.Duration `default:"1m"`
+	Endpoint     string
+	PollInterval time.Duration `default:"1m"`
 }
 
 type Service struct {
@@ -33,19 +32,11 @@ type Service struct {
 	vswap   *blockchain.Vswap
 	swappi  *blockchain.Swappi
 	scan    *scan.Api
-	pools   []common.Address
+
+	pools []common.Address
 }
 
 func NewService(config Config, handler sync.EventHandler, vswap *blockchain.Vswap, swappi *blockchain.Swappi, scan *scan.Api, pools ...common.Address) (*Service, error) {
-	// TODO read from contract parser for the first hourTimestamp
-	if config.NextHourTimestamp == 0 {
-		config.NextHourTimestamp = time.Now().Truncate(time.Hour).Unix()
-	}
-
-	if config.NextHourTimestamp%3600 > 0 {
-		return nil, errors.Errorf("Invalid NextHourTimestamp value %v", config.NextHourTimestamp)
-	}
-
 	if len(pools) == 0 {
 		return nil, errors.New("Pools not specified")
 	}
@@ -66,11 +57,17 @@ func NewService(config Config, handler sync.EventHandler, vswap *blockchain.Vswa
 	}, nil
 }
 
-func (service *Service) Run(ctx context.Context, wg *stdSync.WaitGroup) {
+func (service *Service) Run(ctx context.Context, wg *stdSync.WaitGroup, nextHourTimestamp int64) {
 	defer wg.Done()
 
-	nextHourTimestamp := service.config.NextHourTimestamp
-	logger.WithField("next", formatHourTimestamp(nextHourTimestamp)).Info("Start to poll data from contract parser")
+	if nextHourTimestamp == 0 {
+		var err error
+		if nextHourTimestamp, err = service.FirstTimestamp(ctx); err != nil {
+			logger.WithError(err).Fatal("Failed to init first hour timestamp to poll data from contract parser")
+		}
+	}
+
+	logger.WithField("next", formatHourTimestamp(nextHourTimestamp)).WithField("ts", nextHourTimestamp).Info("Start to poll data from contract parser")
 
 	ticker := time.NewTicker(time.Millisecond)
 	defer ticker.Stop()
