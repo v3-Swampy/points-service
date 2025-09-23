@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/Conflux-Chain/go-conflux-util/api"
 	"github.com/Conflux-Chain/go-conflux-util/store"
@@ -102,11 +103,18 @@ func (service *UserService) List(request model.UserPagingRequest) (total int64, 
 		return 0, nil, api.ErrDatabaseCause(err, "Failed to get count of users")
 	}
 
+	var otherFields string
+	if strings.EqualFold(request.SortField, "trade") {
+		otherFields = "liquidity_points %s"
+	} else {
+		otherFields = "trade_points %s"
+	}
+
 	var orderBy string
 	if request.IsDesc() {
-		orderBy = fmt.Sprintf("%s_points DESC", request.SortField)
+		orderBy = fmt.Sprintf("%s_points DESC, %s", request.SortField, fmt.Sprintf(otherFields, "DESC"))
 	} else {
-		orderBy = fmt.Sprintf("%s_points ASC", request.SortField)
+		orderBy = fmt.Sprintf("%s_points ASC, %s", request.SortField, fmt.Sprintf(otherFields, "ASC"))
 	}
 
 	if err = db.Order(orderBy).Offset(request.Offset).Limit(request.Limit).Find(&users).Error; err != nil {

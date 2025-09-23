@@ -30,7 +30,7 @@ definitions:
       total:
         type: integer
       updatedAt:
-        type: string
+        type: integer
     type: object
   model.PoolInfo:
     properties:
@@ -38,7 +38,11 @@ definitions:
         type: string
       liquidityWeight:
         type: integer
+      token0:
+        type: string
       token0Symbol:
+        type: string
+      token1:
         type: string
       token1Symbol:
         type: string

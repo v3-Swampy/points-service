@@ -238,7 +238,7 @@
                     "type": "integer"
                 },
                 "updatedAt": {
-                    "type": "string"
+                    "type": "integer"
                 }
             }
         },
@@ -251,7 +251,13 @@
                 "liquidityWeight": {
                     "type": "integer"
                 },
+                "token0": {
+                    "type": "string"
+                },
                 "token0Symbol": {
+                    "type": "string"
+                },
+                "token1": {
                     "type": "string"
                 },
                 "token1Symbol": {

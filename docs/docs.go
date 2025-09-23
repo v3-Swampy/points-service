@@ -249,7 +249,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "updatedAt": {
-                    "type": "string"
+                    "type": "integer"
                 }
             }
         },
@@ -262,7 +262,13 @@ const docTemplate = `{
                 "liquidityWeight": {
                     "type": "integer"
                 },
+                "token0": {
+                    "type": "string"
+                },
                 "token0Symbol": {
+                    "type": "string"
+                },
+                "token1": {
                     "type": "string"
                 },
                 "token1Symbol": {
