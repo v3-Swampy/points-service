@@ -15,29 +15,25 @@ import (
 	"gorm.io/gorm"
 )
 
-type SwappiConfig struct {
-	Factory string
-	USDT    string
-	WCFX    string
-}
-
 type StatService struct {
-	store  *store.Store
+	store *store.Store
+
 	config *ConfigService
 	param  *PoolParamService
 	user   *UserService
 	pool   *PoolService
-	swappi *blockchain.Swappi
+
+	vswap *blockchain.Swappi
 }
 
-func NewStatService(store *store.Store, swappi *blockchain.Swappi) *StatService {
+func NewStatService(store *store.Store, vswap *blockchain.Swappi) *StatService {
 	return &StatService{
 		store:  store,
 		config: NewConfigService(store),
 		param:  NewPoolParamService(store),
 		user:   NewUserService(store),
 		pool:   NewPoolService(store),
-		swappi: swappi,
+		vswap:  vswap,
 	}
 }
 
@@ -124,7 +120,7 @@ func (service *StatService) aggregateTVL(timeInfo sync.TimeInfo, pools map[strin
 	}
 
 	for _, pool := range pools {
-		tvl, err := service.swappi.GetPairTVLByBalances(&opts, common.HexToAddress(pool.Address))
+		tvl, err := service.vswap.GetPairTVLByBalances(&opts, common.HexToAddress(pool.Address))
 		if err != nil {
 			return err
 		}

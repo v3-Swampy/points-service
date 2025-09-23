@@ -6,6 +6,7 @@ type Config struct {
 	URL    string
 	Scan   string
 	Swappi SwappiConfig
+	Vswap  SwappiConfig
 }
 
 type SwappiConfig struct {

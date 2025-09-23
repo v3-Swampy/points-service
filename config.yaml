@@ -9,6 +9,10 @@ blockchain:
     factory: <factory_address>
     usdt: <usdt_address>
     wcfx: <wcfx_address>
+  vswap:
+    factory: <factory_address>
+    usdt: <usdt_address>
+    wcfx: <wcfx_address>
 
 # Sync Configurations
 # sync:
