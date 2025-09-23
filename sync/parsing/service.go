@@ -79,7 +79,7 @@ func (service *Service) Run(ctx context.Context, wg *stdSync.WaitGroup) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			logger := logger.WithField("time", formatHourTimestamp(nextHourTimestamp)).WithField("ts", nextHourTimestamp)
+			logger := logger.WithField("dt", formatHourTimestamp(nextHourTimestamp)).WithField("ts", nextHourTimestamp)
 
 			if ok, err := service.sync(ctx, nextHourTimestamp); err != nil {
 				logger.WithError(err).Warn("Failed to sync once")
@@ -97,7 +97,7 @@ func (service *Service) Run(ctx context.Context, wg *stdSync.WaitGroup) {
 }
 
 func (service *Service) sync(ctx context.Context, hourTimestamp int64) (bool, error) {
-	logger := logger.WithField("time", formatHourTimestamp(hourTimestamp)).WithField("ts", hourTimestamp)
+	logger := logger.WithField("dt", formatHourTimestamp(hourTimestamp)).WithField("ts", hourTimestamp)
 
 	// TODO cacheable
 	minBlockNumber, err := service.scan.GetBlockNumberByTime(hourTimestamp, true)
