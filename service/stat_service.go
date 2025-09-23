@@ -1,9 +1,11 @@
 package service
 
 import (
+	"math/big"
 	"time"
 
 	"github.com/Conflux-Chain/go-conflux-util/store"
+	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
@@ -39,7 +41,7 @@ func NewStatService(store *store.Store, swappi *blockchain.Swappi) *StatService 
 	}
 }
 
-func (service *StatService) OnEventBatch(timestamp int64, trades []sync.TradeEvent, liquidities []sync.LiquidityEvent) error {
+func (service *StatService) OnEventBatch(timeInfo sync.TimeInfo, trades []sync.TradeEvent, liquidities []sync.LiquidityEvent) error {
 	users := make(map[string]*model.User)
 	pools := make(map[string]*model.Pool)
 
@@ -51,11 +53,11 @@ func (service *StatService) OnEventBatch(timestamp int64, trades []sync.TradeEve
 		return err
 	}
 
-	if err := service.aggregateTVL(pools); err != nil {
+	if err := service.aggregateTVL(timeInfo, pools); err != nil {
 		return err
 	}
 
-	return service.Store(timestamp, users, pools)
+	return service.Store(timeInfo.HourTimestamp, users, pools)
 }
 
 func (service *StatService) aggregateTrade(event []sync.TradeEvent, users map[string]*model.User, pools map[string]*model.Pool) error {
@@ -116,16 +118,20 @@ func (service *StatService) aggregateLiquidity(event []sync.LiquidityEvent, user
 	return nil
 }
 
-func (service *StatService) aggregateTVL(pools map[string]*model.Pool) error {
-	if len(pools) > 0 {
-		for _, pool := range pools {
-			tvl, err := service.swappi.GetPairTVL(nil, common.HexToAddress(pool.Address))
-			if err != nil {
-				return err
-			}
-			pool.Tvl = tvl
-		}
+func (service *StatService) aggregateTVL(timeInfo sync.TimeInfo, pools map[string]*model.Pool) error {
+	opts := bind.CallOpts{
+		BlockNumber: new(big.Int).SetUint64(timeInfo.MaxBlockNumber),
 	}
+
+	for _, pool := range pools {
+		tvl, err := service.swappi.GetPairTVLByBalances(&opts, common.HexToAddress(pool.Address))
+		if err != nil {
+			return err
+		}
+
+		pool.Tvl = tvl
+	}
+
 	return nil
 }
 
