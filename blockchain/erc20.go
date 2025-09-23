@@ -35,6 +35,18 @@ func (erc20 *ERC20) GetTokenInfo(token common.Address) (TokenInfo, error) {
 		return val.(TokenInfo), nil
 	}
 
+	info, err := erc20.getTokenInfo(token)
+	if err != nil {
+		return TokenInfo{}, err
+	}
+
+	// cache value
+	erc20.cache.Store(token, info)
+
+	return info, nil
+}
+
+func (erc20 *ERC20) getTokenInfo(token common.Address) (TokenInfo, error) {
 	caller, err := contract.NewERC20Caller(token, erc20.caller)
 	if err != nil {
 		return TokenInfo{}, errors.WithMessage(err, "Failed to create ERC20 caller")
@@ -57,12 +69,10 @@ func (erc20 *ERC20) GetTokenInfo(token common.Address) (TokenInfo, error) {
 		return TokenInfo{}, errors.WithMessage(err, "Failed to query token decimals")
 	}
 
-	// cache value
-	erc20.cache.Store(token, info)
-
 	return info, nil
 }
 
+// GetBalance retrieves the token balance of specified account.
 func (erc20 *ERC20) GetBalance(opts *bind.CallOpts, token, account common.Address) (decimal.Decimal, error) {
 	caller, err := contract.NewERC20Caller(token, erc20.caller)
 	if err != nil {
@@ -76,7 +86,7 @@ func (erc20 *ERC20) GetBalance(opts *bind.CallOpts, token, account common.Addres
 
 	balance, err := caller.BalanceOf(opts, account)
 	if err != nil {
-		return decimal.Zero, errors.WithMessage(err, "Failed to get balance of specified account")
+		return decimal.Zero, errors.WithMessage(err, "Failed to get balance")
 	}
 
 	return decimal.NewFromBigInt(balance, -int32(decimals)), nil
