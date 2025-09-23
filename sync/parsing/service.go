@@ -181,8 +181,8 @@ func (service *Service) sync(ctx context.Context, hourTimestamp int64) (bool, er
 					User:      v.UserAddress,
 					Pool:      info,
 				},
-				Value0: decimal.NewFromBigInt(v.Token0Volumes.ToInt(), -int32(info.Token0.Decimals)).Mul(price0),
-				Value1: decimal.NewFromBigInt(v.Token1Volumes.ToInt(), -int32(info.Token1.Decimals)).Mul(price1),
+				Value0: decimal.NewFromBigInt(v.Token0Volume.ToInt(), -int32(info.Token0.Decimals)).Mul(price0),
+				Value1: decimal.NewFromBigInt(v.Token1Volume.ToInt(), -int32(info.Token1.Decimals)).Mul(price1),
 			})
 		}
 
