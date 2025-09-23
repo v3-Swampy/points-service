@@ -35,18 +35,6 @@ func (erc20 *ERC20) GetTokenInfo(token common.Address) (TokenInfo, error) {
 		return val.(TokenInfo), nil
 	}
 
-	info, err := erc20.getTokenInfo(token)
-	if err != nil {
-		return TokenInfo{}, err
-	}
-
-	// cache value
-	erc20.cache.Store(token, info)
-
-	return info, nil
-}
-
-func (erc20 *ERC20) getTokenInfo(token common.Address) (TokenInfo, error) {
 	caller, err := contract.NewERC20Caller(token, erc20.caller)
 	if err != nil {
 		return TokenInfo{}, errors.WithMessage(err, "Failed to create ERC20 caller")
@@ -68,6 +56,9 @@ func (erc20 *ERC20) getTokenInfo(token common.Address) (TokenInfo, error) {
 	if info.Decimals, err = caller.Decimals(nil); err != nil {
 		return TokenInfo{}, errors.WithMessage(err, "Failed to query token decimals")
 	}
+
+	// cache value
+	erc20.cache.Store(token, info)
 
 	return info, nil
 }

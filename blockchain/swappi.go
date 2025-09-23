@@ -51,18 +51,6 @@ func (swappi *Swappi) GetPairInfo(pair common.Address) (PairInfo, error) {
 		return val.(PairInfo), nil
 	}
 
-	info, err := swappi.getPairInfo(pair)
-	if err != nil {
-		return PairInfo{}, err
-	}
-
-	// cache value
-	swappi.cache.Store(pair, info)
-
-	return info, nil
-}
-
-func (swappi *Swappi) getPairInfo(pair common.Address) (PairInfo, error) {
 	info := PairInfo{
 		Address: pair,
 	}
@@ -91,6 +79,9 @@ func (swappi *Swappi) getPairInfo(pair common.Address) (PairInfo, error) {
 	if info.Token1, err = swappi.erc20.GetTokenInfo(token1); err != nil {
 		return PairInfo{}, errors.WithMessage(err, "Failed to query token1 info")
 	}
+
+	// cache value
+	swappi.cache.Store(pair, info)
 
 	return info, nil
 }
