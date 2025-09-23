@@ -23,10 +23,10 @@ type StatService struct {
 	user   *UserService
 	pool   *PoolService
 
-	vswap *blockchain.Swappi
+	vswap *blockchain.Vswap
 }
 
-func NewStatService(store *store.Store, vswap *blockchain.Swappi) *StatService {
+func NewStatService(store *store.Store, vswap *blockchain.Vswap) *StatService {
 	return &StatService{
 		store:  store,
 		config: NewConfigService(store),
@@ -120,7 +120,7 @@ func (service *StatService) aggregateTVL(timeInfo sync.TimeInfo, pools map[strin
 	}
 
 	for _, pool := range pools {
-		tvl, err := service.vswap.GetPairTVLByBalances(&opts, common.HexToAddress(pool.Address))
+		tvl, err := service.vswap.GetPoolTVL(&opts, common.HexToAddress(pool.Address))
 		if err != nil {
 			return err
 		}

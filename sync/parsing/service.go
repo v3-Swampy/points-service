@@ -29,13 +29,13 @@ type Service struct {
 
 	config  Config
 	handler sync.EventHandler
-	vswap   *blockchain.Swappi
+	vswap   *blockchain.Vswap
 	swappi  *blockchain.Swappi
 	scan    *scan.Api
 	pools   []common.Address
 }
 
-func NewService(config Config, handler sync.EventHandler, vswap, swappi *blockchain.Swappi, scan *scan.Api, pools ...common.Address) (*Service, error) {
+func NewService(config Config, handler sync.EventHandler, vswap *blockchain.Vswap, swappi *blockchain.Swappi, scan *scan.Api, pools ...common.Address) (*Service, error) {
 	// TODO read from contract parser for the first hourTimestamp
 	if config.NextHourTimestamp == 0 {
 		config.NextHourTimestamp = time.Now().Truncate(time.Hour).Unix()
@@ -147,7 +147,7 @@ func (service *Service) sync(ctx context.Context, hourTimestamp int64) (bool, er
 		}
 
 		// get pool info
-		info, err := service.vswap.GetPairInfo(pool)
+		info, err := service.vswap.GetPoolInfo(pool)
 		if err != nil {
 			return false, errors.WithMessage(err, "Failed to get pool info")
 		}
@@ -155,7 +155,7 @@ func (service *Service) sync(ctx context.Context, hourTimestamp int64) (bool, er
 		logger.WithField("pool", info).Debug("Pool info retrieved")
 
 		// get prices to construct events
-		price0, cached, err := service.getPrice(minBlockNumber, maxBlockNumber, info.Token0.Address, priceCache)
+		price0, cached, err := service.getPrice(minBlockNumber, maxBlockNumber, pool, info.Token0.Address, priceCache)
 		if err != nil {
 			return false, errors.WithMessagef(err, "Failed to get price of token0 %v", info.Token0.Symbol)
 		}
@@ -164,7 +164,7 @@ func (service *Service) sync(ctx context.Context, hourTimestamp int64) (bool, er
 			logger.WithField("price", price0.Truncate(6)).WithField("token", info.Token0.Symbol).Debug("Token0 price retrieved")
 		}
 
-		price1, cached, err := service.getPrice(minBlockNumber, maxBlockNumber, info.Token1.Address, priceCache)
+		price1, cached, err := service.getPrice(minBlockNumber, maxBlockNumber, pool, info.Token1.Address, priceCache)
 		if err != nil {
 			return false, errors.WithMessagef(err, "Failed to get price of token1 %v", info.Token1.Symbol)
 		}
@@ -222,7 +222,7 @@ func (service *Service) sync(ctx context.Context, hourTimestamp int64) (bool, er
 	return true, nil
 }
 
-func (service *Service) getPrice(minBlockNumber, maxBlockNumber uint64, token common.Address, cache map[common.Address]decimal.Decimal) (decimal.Decimal, bool, error) {
+func (service *Service) getPrice(minBlockNumber, maxBlockNumber uint64, pool, token common.Address, cache map[common.Address]decimal.Decimal) (decimal.Decimal, bool, error) {
 	if price, ok := cache[token]; ok {
 		return price, true, nil
 	}
@@ -236,7 +236,7 @@ func (service *Service) getPrice(minBlockNumber, maxBlockNumber uint64, token co
 			BlockNumber: new(big.Int).SetUint64(bn),
 		}
 
-		price, err := service.swappi.GetTokenPriceAuto(&opts, token)
+		price, err := service.queryPrice(&opts, pool, token)
 		if err != nil {
 			return decimal.Zero, false, errors.WithMessagef(err, "Failed to sample token price at block %v", bn)
 		}
@@ -249,6 +249,26 @@ func (service *Service) getPrice(minBlockNumber, maxBlockNumber uint64, token co
 	cache[token] = price
 
 	return price, false, nil
+}
+
+func (service *Service) queryPrice(opts *bind.CallOpts, pool, token common.Address) (decimal.Decimal, error) {
+	// get from swappi
+	price, err := service.swappi.GetTokenPriceAuto(opts, token)
+	if err == nil {
+		return price, nil
+	}
+
+	if err != blockchain.ErrSwappiPairNotFound {
+		return decimal.Zero, errors.WithMessage(err, "Failed to get token price from Swappi")
+	}
+
+	// get from vswap
+	price, err = service.vswap.GetTokenPriceUSDT(opts, pool, token)
+	if err != nil {
+		return decimal.Zero, errors.WithMessage(err, "Failed to get token price from vSwap")
+	}
+
+	return price, nil
 }
 
 func formatHourTimestamp(hourTimestamp int64) string {

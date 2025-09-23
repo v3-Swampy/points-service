@@ -52,7 +52,7 @@ func start(*cobra.Command, []string) {
 	call, _ := client.ToClientForContract()
 	erc20 := blockchain.NewERC20(call)
 	swappi := blockchain.NewSwappi(call, erc20, blockchainConfig.Swappi.ToAddresses())
-	vswap := blockchain.NewSwappi(call, erc20, blockchainConfig.Vswap.ToAddresses())
+	vswap := blockchain.NewVswap(swappi, common.HexToAddress(blockchainConfig.Vswap.WcfxUsdtPool))
 
 	// init database
 	storeConfig := store.MustNewConfigFromViper()
