@@ -45,11 +45,6 @@ func main() {
 	cmd.FatalIfErr(err, "Failed to get token price in Swappi")
 	fmt.Println("Token price:", tokenPrice)
 
-	// get ABC LP price
-	lpPrice, err := swappi.GetPairTokenPrice(nil, abcLP)
-	cmd.FatalIfErr(err, "Failed to get LP price in Swappi")
-	fmt.Println("LP price:", lpPrice)
-
 	// ABC-WCFX pool TVL
 	tvl, err := swappi.GetPairTVL(nil, abcLP)
 	cmd.FatalIfErr(err, "Failed to get TVL in Swappi")
