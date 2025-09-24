@@ -37,23 +37,23 @@ func NewStatService(store *store.Store, vswap *blockchain.Vswap) *StatService {
 	}
 }
 
-func (service *StatService) OnEventBatch(timeInfo sync.TimeInfo, trades []sync.TradeEvent, liquidities []sync.LiquidityEvent) error {
+func (service *StatService) OnEventBatch(event sync.BatchEvent) error {
 	users := make(map[string]*model.User)
 	pools := make(map[string]*model.Pool)
 
-	if err := service.aggregateTrade(trades, users, pools); err != nil {
+	if err := service.aggregateTrade(event.Trades, users, pools); err != nil {
 		return err
 	}
 
-	if err := service.aggregateLiquidity(liquidities, users, pools); err != nil {
+	if err := service.aggregateLiquidity(event.Liquidities, users, pools); err != nil {
 		return err
 	}
 
-	if err := service.aggregateTVL(timeInfo, pools); err != nil {
+	if err := service.aggregateTVL(event.TimeInfo, pools); err != nil {
 		return err
 	}
 
-	return service.Store(timeInfo.HourTimestamp, users, pools)
+	return service.Store(event.HourTimestamp, users, pools)
 }
 
 func (service *StatService) aggregateTrade(event []sync.TradeEvent, users map[string]*model.User, pools map[string]*model.Pool) error {

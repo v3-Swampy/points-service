@@ -15,7 +15,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/v3-Swampy/points-service/api"
 	"github.com/v3-Swampy/points-service/blockchain"
-	"github.com/v3-Swampy/points-service/blockchain/scan"
 	"github.com/v3-Swampy/points-service/model"
 	"github.com/v3-Swampy/points-service/service"
 	"github.com/v3-Swampy/points-service/sync/parsing"
@@ -43,7 +42,6 @@ func start(*cobra.Command, []string) {
 	// init blockchain
 	var blockchainConfig blockchain.Config
 	viper.MustUnmarshalKey("blockchain", &blockchainConfig)
-	scanApi := scan.NewApi(blockchainConfig.Scan)
 	client, err := web3go.NewClient(blockchainConfig.URL)
 	cmd.FatalIfErr(err, "Failed to create blockchain client")
 	defer client.Close()
@@ -74,13 +72,23 @@ func start(*cobra.Command, []string) {
 		nextHourTimestamp = lastStatTimestamp + 3600
 	}
 
-	// init sync service
-	var syncConfig parsing.Config
-	viper.MustUnmarshalKey("sync", &syncConfig)
-	syncService, err := parsing.NewService(syncConfig, services.Stat, vswap, swappi, scanApi, pools...)
-	cmd.FatalIfErr(err, "Failed to create sync service")
+	// init poller/emitter/batcher
+	var pollConfig parsing.PollConfig
+	viper.MustUnmarshalKey("sync.poller", &pollConfig)
+	poller, err := parsing.NewPoller(pollConfig, nextHourTimestamp, pools...)
+	cmd.FatalIfErr(err, "Failed to create poller")
+	defer poller.Close()
 	wg.Add(1)
-	go syncService.Run(ctx, &wg, nextHourTimestamp)
+	go poller.Run(ctx, &wg)
+
+	emitter := parsing.NewEmitter(vswap, swappi)
+	defer emitter.Close()
+	wg.Add(1)
+	go emitter.Run(ctx, &wg, poller.Ch())
+
+	batcher := parsing.NewBatcher(services.Stat)
+	wg.Add(1)
+	go batcher.Run(ctx, &wg, emitter.Ch())
 
 	// start api
 	go api.MustServeFromViper(services)

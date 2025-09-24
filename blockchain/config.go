@@ -4,7 +4,6 @@ import "github.com/ethereum/go-ethereum/common"
 
 type Config struct {
 	URL    string
-	Scan   string
 	Swappi SwappiConfig
 	Vswap  VswapConfig
 }

@@ -31,6 +31,19 @@ type TimeInfo struct {
 	MaxBlockNumber uint64
 }
 
+type BatchEvent struct {
+	TimeInfo
+
+	Trades      []TradeEvent
+	Liquidities []LiquidityEvent
+}
+
+func (event *BatchEvent) Merge(other BatchEvent) {
+	event.TimeInfo = other.TimeInfo
+	event.Trades = append(event.Trades, other.Trades...)
+	event.Liquidities = append(event.Liquidities, other.Liquidities...)
+}
+
 type EventHandler interface {
-	OnEventBatch(time TimeInfo, trades []TradeEvent, liquidities []LiquidityEvent) error
+	OnEventBatch(event BatchEvent) error
 }
