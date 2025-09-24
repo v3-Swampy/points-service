@@ -3,8 +3,7 @@
 
 # Blockchain Configurations
 blockchain:
-  url: http://evm.confluxrpc.com
-  scan: https://evmapi.confluxscan.org
+  url: <blockchain_RPC_endpoint>
   swappi:
     factory: <factory_address>
     usdt: <usdt_address>
@@ -13,6 +12,7 @@ blockchain:
     wcfxUsdtPool: <wcfx_usdt_pool_address>
 
 # Sync Configurations
-# sync:
-#   endpoint: http://127.0.0.1:5678
-#   pollInterval: 1m
+sync:
+  poller:
+    endpoint: <contract_parser_RPC_endpoint>
+    scan: <scan_open_api_endpoint>

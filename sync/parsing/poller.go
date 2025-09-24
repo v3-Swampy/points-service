@@ -7,7 +7,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"github.com/v3-Swampy/points-service/blockchain/scan"
 )
 
@@ -75,10 +74,7 @@ func (poller *Poller) Run(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	hourTimestamp := poller.nextHourTimestamp
-	logger.WithFields(logrus.Fields{
-		"ts": hourTimestamp,
-		"dt": formatHourTimestamp(hourTimestamp),
-	}).Info("Poller started")
+	logHourTimestamp(hourTimestamp).Info("Poller started")
 
 	ticker := time.NewTicker(time.Millisecond)
 	defer ticker.Stop()
@@ -88,10 +84,7 @@ func (poller *Poller) Run(ctx context.Context, wg *sync.WaitGroup) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			logger = logger.WithFields(logrus.Fields{
-				"ts": hourTimestamp,
-				"dt": formatHourTimestamp(hourTimestamp),
-			})
+			logger = logHourTimestamp(hourTimestamp)
 
 			start := time.Now()
 

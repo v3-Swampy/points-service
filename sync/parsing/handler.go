@@ -52,10 +52,7 @@ func (batcher *Batcher) mustHandle(ctx context.Context, batch sync.BatchEvent) s
 		return sync.BatchEvent{}
 	}
 
-	logger = logger.WithFields(logrus.Fields{
-		"ts": batch.HourTimestamp,
-		"dt": formatHourTimestamp(batch.HourTimestamp),
-	})
+	logger = logHourTimestamp(batch.HourTimestamp)
 
 	for {
 		start := time.Now()

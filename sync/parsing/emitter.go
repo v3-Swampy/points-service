@@ -53,10 +53,7 @@ func (emitter *Emitter) Run(ctx context.Context, wg *stdSync.WaitGroup, dataCh <
 }
 
 func (emitter *Emitter) mustEmit(ctx context.Context, data HourlyData) {
-	logger = logger.WithFields(logrus.Fields{
-		"ts": data.HourTimestamp,
-		"dt": formatHourTimestamp(data.HourTimestamp),
-	})
+	logger = logHourTimestamp(data.HourTimestamp)
 
 	for {
 		start := time.Now()
@@ -84,10 +81,7 @@ func (emitter *Emitter) mustEmit(ctx context.Context, data HourlyData) {
 }
 
 func (emitter *Emitter) emit(ctx context.Context, data HourlyData) (sync.BatchEvent, error) {
-	logger = logger.WithFields(logrus.Fields{
-		"ts": data.HourTimestamp,
-		"dt": formatHourTimestamp(data.HourTimestamp),
-	})
+	logger = logHourTimestamp(data.HourTimestamp)
 
 	event := sync.BatchEvent{
 		TimeInfo: data.TimeInfo,
