@@ -21,6 +21,7 @@ type Emitter struct {
 	buf    chan sync.BatchEvent
 	vswap  *blockchain.Vswap
 	swappi *blockchain.Swappi
+	logger *logrus.Entry
 }
 
 func NewEmitter(vswap *blockchain.Vswap, swappi *blockchain.Swappi) *Emitter {
@@ -28,6 +29,7 @@ func NewEmitter(vswap *blockchain.Vswap, swappi *blockchain.Swappi) *Emitter {
 		buf:    make(chan sync.BatchEvent, DefaultBufSize),
 		vswap:  vswap,
 		swappi: swappi,
+		logger: logrus.WithField("worker", "sync.emitter"),
 	}
 }
 
@@ -53,7 +55,7 @@ func (emitter *Emitter) Run(ctx context.Context, wg *stdSync.WaitGroup, dataCh <
 }
 
 func (emitter *Emitter) mustEmit(ctx context.Context, data HourlyData) {
-	logger = logHourTimestamp(data.HourTimestamp)
+	logger := emitter.logger.WithField("ts", formatTs(data.HourTimestamp))
 
 	for {
 		start := time.Now()
@@ -81,7 +83,7 @@ func (emitter *Emitter) mustEmit(ctx context.Context, data HourlyData) {
 }
 
 func (emitter *Emitter) emit(ctx context.Context, data HourlyData) (sync.BatchEvent, error) {
-	logger = logHourTimestamp(data.HourTimestamp)
+	logger := emitter.logger.WithField("ts", formatTs(data.HourTimestamp))
 
 	event := sync.BatchEvent{
 		TimeInfo: data.TimeInfo,
