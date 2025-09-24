@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
 	"github.com/v3-Swampy/points-service/blockchain/scan"
+	"golang.org/x/sync/errgroup"
 )
 
 var (
@@ -110,45 +111,75 @@ func (poller *Poller) Run(ctx context.Context, wg *sync.WaitGroup) {
 }
 
 func (poller *Poller) poll(ctx context.Context, hourTimestamp int64) (HourlyData, bool, error) {
+	// check if data avaialbe
+	latestHourTimestamp, err := poller.client.LatestTimestamp(ctx)
+	if err != nil {
+		return HourlyData{}, false, errors.WithMessage(err, "Failed to poll latest timestamp")
+	}
+
+	if hourTimestamp > latestHourTimestamp {
+		return HourlyData{}, false, nil
+	}
+
+	// poll data in async
 	var result HourlyData
 	result.HourTimestamp = hourTimestamp
 
-	for _, pool := range poller.pools {
-		// trade data
-		trades, err := poller.client.GetHourlyTradeDataAll(ctx, pool, hourTimestamp)
-		if err != nil {
-			return HourlyData{}, false, errors.WithMessage(err, "Failed to poll trade data")
-		}
+	var group *errgroup.Group
+	group, ctx = errgroup.WithContext(ctx)
 
-		if trades == nil {
-			return HourlyData{}, false, nil
-		}
+	numPools := len(poller.pools)
+	poolDataCh := make(chan PoolData, numPools)
+	defer close(poolDataCh)
 
-		// liquidity data
-		liquidities, err := poller.client.GetHourlyLiquidityDataAll(ctx, pool, hourTimestamp)
-		if err != nil {
-			return HourlyData{}, false, errors.WithMessage(err, "Failed to poll liquidity data")
-		}
+	// poll pool data
+	for i := 0; i < numPools; i++ {
+		pool := poller.pools[i]
 
-		if liquidities == nil {
-			return HourlyData{}, false, nil
-		}
+		group.Go(func() (err error) {
+			data := PoolData{
+				Address: pool,
+			}
 
-		result.Pools = append(result.Pools, PoolData{
-			Address:     pool,
-			Trades:      trades,
-			Liquidities: liquidities,
+			if data.Trades, err = poller.client.GetHourlyTradeDataAll(ctx, pool, hourTimestamp); err != nil {
+				return errors.WithMessage(err, "Failed to poll trade data")
+			}
+
+			if data.Liquidities, err = poller.client.GetHourlyLiquidityDataAll(ctx, pool, hourTimestamp); err != nil {
+				return errors.WithMessage(err, "Failed to poll liquidity data")
+			}
+
+			poolDataCh <- data
+
+			return nil
 		})
 	}
 
-	var err error
+	// poll min block number from scan
+	group.Go(func() (err error) {
+		if result.MinBlockNumber, err = poller.scan.GetBlockNumberByTime(hourTimestamp, true); err != nil {
+			return errors.WithMessage(err, "Failed to query min block number")
+		}
 
-	if result.MinBlockNumber, err = poller.scan.GetBlockNumberByTime(hourTimestamp, true); err != nil {
-		return HourlyData{}, false, errors.WithMessage(err, "Failed to query min block number")
+		return nil
+	})
+
+	// poll max block number from scan
+	group.Go(func() (err error) {
+		if result.MaxBlockNumber, err = poller.scan.GetBlockNumberByTime(hourTimestamp+3600, false); err != nil {
+			return errors.WithMessage(err, "Failed to query max block number")
+		}
+
+		return nil
+	})
+
+	if err := group.Wait(); err != nil {
+		return HourlyData{}, false, errors.WithMessage(err, "Any async worker failed")
 	}
 
-	if result.MaxBlockNumber, err = poller.scan.GetBlockNumberByTime(hourTimestamp+3600, false); err != nil {
-		return HourlyData{}, false, errors.WithMessage(err, "Failed to query max block number")
+	for i := 0; i < numPools; i++ {
+		data := <-poolDataCh
+		result.Pools = append(result.Pools, data)
 	}
 
 	return result, true, nil

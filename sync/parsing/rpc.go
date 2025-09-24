@@ -33,6 +33,10 @@ func (client *Client) FirstTimestamp(ctx context.Context) (int64, error) {
 	return providers.CallContext[int64](client.Provider, ctx, "firstTimestamp")
 }
 
+func (client *Client) LatestTimestamp(ctx context.Context) (int64, error) {
+	return providers.CallContext[int64](client.Provider, ctx, "latestTimestamp")
+}
+
 func (client *Client) GetHourlyTradeData(ctx context.Context, pool common.Address, hourTimestamp int64, offset int, limit ...int) (*PagingResult[TradeData], error) {
 	if len(limit) == 0 {
 		return providers.CallContext[*PagingResult[TradeData]](client.Provider, ctx, "getHourlyTradeData", pool, hourTimestamp, offset)
