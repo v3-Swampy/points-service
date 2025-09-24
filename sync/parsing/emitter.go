@@ -16,23 +16,16 @@ import (
 	"github.com/v3-Swampy/points-service/sync"
 )
 
-type Event struct {
-	sync.TimeInfo
-
-	Trades      []sync.TradeEvent
-	Liquidities []sync.LiquidityEvent
-}
-
 // Emitter is used to generate event based on polled data from contract parser.
 type Emitter struct {
-	buf    chan Event
+	buf    chan sync.BatchEvent
 	vswap  *blockchain.Vswap
 	swappi *blockchain.Swappi
 }
 
 func NewEmitter(vswap *blockchain.Vswap, swappi *blockchain.Swappi) *Emitter {
 	return &Emitter{
-		buf:    make(chan Event, DefaultBufSize),
+		buf:    make(chan sync.BatchEvent, DefaultBufSize),
 		vswap:  vswap,
 		swappi: swappi,
 	}
@@ -42,7 +35,7 @@ func (emitter *Emitter) Close() {
 	close(emitter.buf)
 }
 
-func (emitter *Emitter) Ch() <-chan Event {
+func (emitter *Emitter) Ch() <-chan sync.BatchEvent {
 	return emitter.buf
 }
 
@@ -90,13 +83,13 @@ func (emitter *Emitter) mustEmit(ctx context.Context, data HourlyData) {
 	}
 }
 
-func (emitter *Emitter) emit(ctx context.Context, data HourlyData) (Event, error) {
+func (emitter *Emitter) emit(ctx context.Context, data HourlyData) (sync.BatchEvent, error) {
 	logger = logger.WithFields(logrus.Fields{
 		"ts": data.HourTimestamp,
 		"dt": formatHourTimestamp(data.HourTimestamp),
 	})
 
-	event := Event{
+	event := sync.BatchEvent{
 		TimeInfo: data.TimeInfo,
 	}
 
@@ -106,7 +99,7 @@ func (emitter *Emitter) emit(ctx context.Context, data HourlyData) (Event, error
 		// check cancellation
 		select {
 		case <-ctx.Done():
-			return Event{}, ctx.Err()
+			return sync.BatchEvent{}, ctx.Err()
 		default:
 		}
 
@@ -119,7 +112,7 @@ func (emitter *Emitter) emit(ctx context.Context, data HourlyData) (Event, error
 		// get pool info
 		info, err := emitter.vswap.GetPoolInfo(pool.Address)
 		if err != nil {
-			return Event{}, errors.WithMessage(err, "Failed to get pool info")
+			return sync.BatchEvent{}, errors.WithMessage(err, "Failed to get pool info")
 		}
 
 		logger.WithField("pool", info).Debug("Pool info retrieved")
@@ -127,7 +120,7 @@ func (emitter *Emitter) emit(ctx context.Context, data HourlyData) (Event, error
 		// get prices to construct events
 		price0, cached, err := emitter.getPrice(data.MinBlockNumber, data.MaxBlockNumber, pool.Address, info.Token0.Address, priceCache)
 		if err != nil {
-			return Event{}, errors.WithMessagef(err, "Failed to get price of token0 %v", info.Token0.Symbol)
+			return sync.BatchEvent{}, errors.WithMessagef(err, "Failed to get price of token0 %v", info.Token0.Symbol)
 		}
 
 		if !cached {
@@ -136,7 +129,7 @@ func (emitter *Emitter) emit(ctx context.Context, data HourlyData) (Event, error
 
 		price1, cached, err := emitter.getPrice(data.MinBlockNumber, data.MaxBlockNumber, pool.Address, info.Token1.Address, priceCache)
 		if err != nil {
-			return Event{}, errors.WithMessagef(err, "Failed to get price of token1 %v", info.Token1.Symbol)
+			return sync.BatchEvent{}, errors.WithMessagef(err, "Failed to get price of token1 %v", info.Token1.Symbol)
 		}
 
 		if !cached {

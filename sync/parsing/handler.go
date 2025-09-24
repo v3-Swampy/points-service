@@ -22,10 +22,10 @@ func NewBatcher(handler sync.EventHandler) *Batcher {
 	return &Batcher{handler}
 }
 
-func (batcher *Batcher) Run(ctx context.Context, wg *stdSync.WaitGroup, eventCh <-chan Event) {
+func (batcher *Batcher) Run(ctx context.Context, wg *stdSync.WaitGroup, eventCh <-chan sync.BatchEvent) {
 	defer wg.Done()
 
-	var batch Event
+	var batch sync.BatchEvent
 
 	ticker := time.NewTicker(DefaultEventBatchTimeout)
 	defer ticker.Stop()
@@ -38,10 +38,7 @@ func (batcher *Batcher) Run(ctx context.Context, wg *stdSync.WaitGroup, eventCh 
 			batch = batcher.mustHandle(ctx, batch)
 			ticker.Reset(DefaultEventBatchTimeout)
 		case event := <-eventCh:
-			// merge into batch
-			batch.TimeInfo = event.TimeInfo
-			batch.Trades = append(batch.Trades, event.Trades...)
-			batch.Liquidities = append(batch.Liquidities, event.Liquidities...)
+			batch.Merge(event)
 
 			if len(batch.Trades)+len(batch.Liquidities) >= DefaultEventBatchSize {
 				batch = batcher.mustHandle(ctx, batch)
@@ -50,9 +47,9 @@ func (batcher *Batcher) Run(ctx context.Context, wg *stdSync.WaitGroup, eventCh 
 		}
 	}
 }
-func (batcher *Batcher) mustHandle(ctx context.Context, batch Event) Event {
+func (batcher *Batcher) mustHandle(ctx context.Context, batch sync.BatchEvent) sync.BatchEvent {
 	if batch.HourTimestamp == 0 {
-		return Event{}
+		return sync.BatchEvent{}
 	}
 
 	logger = logger.WithFields(logrus.Fields{
@@ -63,12 +60,12 @@ func (batcher *Batcher) mustHandle(ctx context.Context, batch Event) Event {
 	for {
 		start := time.Now()
 
-		if err := batcher.handler.OnEventBatch(batch.TimeInfo, batch.Trades, batch.Liquidities); err != nil {
+		if err := batcher.handler.OnEventBatch(batch); err != nil {
 			logger.WithError(err).Warn("Failed to handle events in batch")
 
 			select {
 			case <-ctx.Done():
-				return Event{}
+				return sync.BatchEvent{}
 			case <-time.After(DefaultIntervalError):
 				logger.Debug("Batcher retry to handle events")
 			}
@@ -79,7 +76,7 @@ func (batcher *Batcher) mustHandle(ctx context.Context, batch Event) Event {
 				"liquidity": len(batch.Liquidities),
 			}).Info("Batch events handled")
 
-			return Event{}
+			return sync.BatchEvent{}
 		}
 	}
 }

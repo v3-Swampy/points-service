@@ -203,12 +203,17 @@ func (service *Service) sync(ctx context.Context, hourTimestamp int64) (bool, er
 		"liquidities": len(liquidityEvents),
 	}).Debug("Trade and liquidity events retrieved")
 
-	time := sync.TimeInfo{
-		HourTimestamp:  hourTimestamp,
-		MinBlockNumber: minBlockNumber,
-		MaxBlockNumber: maxBlockNumber,
+	batchEvent := sync.BatchEvent{
+		TimeInfo: sync.TimeInfo{
+			HourTimestamp:  hourTimestamp,
+			MinBlockNumber: minBlockNumber,
+			MaxBlockNumber: maxBlockNumber,
+		},
+		Trades:      tradeEvents,
+		Liquidities: liquidityEvents,
 	}
-	if err := service.handler.OnEventBatch(time, tradeEvents, liquidityEvents); err != nil {
+
+	if err := service.handler.OnEventBatch(batchEvent); err != nil {
 		return false, errors.WithMessage(err, "Failed to handle trade and liquidity events")
 	}
 
