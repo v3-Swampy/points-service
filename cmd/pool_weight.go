@@ -37,6 +37,12 @@ var (
 		Run:   updatePoolWeight,
 	}
 
+	getPoolWeightCmd = &cobra.Command{
+		Use:   "get",
+		Short: "Get pool weight values",
+		Run:   getPoolWeight,
+	}
+
 	listPoolWeightCmd = &cobra.Command{
 		Use:   "list",
 		Short: "List all available pool weight values",
@@ -51,36 +57,28 @@ func init() {
 	hookPoolWeightParams(addPoolWeightCmd, true, true)
 
 	poolWeightCmd.AddCommand(updatePoolWeightCmd)
-	hookPoolWeightParams(updatePoolWeightCmd, false, false)
+	hookPoolWeightParams(updatePoolWeightCmd, true, true)
+
+	poolWeightCmd.AddCommand(getPoolWeightCmd)
+	hookPoolWeightParams(getPoolWeightCmd, false, false)
 
 	poolWeightCmd.AddCommand(listPoolWeightCmd)
 }
 
 func addPoolWeight(cmd *cobra.Command, args []string) {
-	storeCtx := util.MustInitStoreContext()
-	defer storeCtx.Close()
-
-	err := validatePoolWeightParams()
-	if err != nil {
-		logrus.WithField("config", weightParams).WithError(err).Info("Invalid command config")
-		return
-	}
-
-	if err := storeCtx.PoolParamService.
-		Upsert(weightParams.Address, weightParams.TradeWeight, weightParams.LiquidityWeight); err != nil {
-		logrus.WithError(err).Info("Failed to add pool weight values")
-		return
-	}
-	logrus.Info("Succeed to add pool weight values")
+	upsertPoolWeight()
 }
 
 func updatePoolWeight(cmd *cobra.Command, args []string) {
+	upsertPoolWeight()
+}
+
+func upsertPoolWeight() {
 	storeCtx := util.MustInitStoreContext()
 	defer storeCtx.Close()
 
-	err := validatePoolWeightParams()
-	if err != nil {
-		logrus.WithField("config", weightParams).WithError(err).Info("Invalid command config")
+	if err := validatePoolWeightParams(); err != nil {
+		logrus.WithError(err).Info("Invalid command config")
 		return
 	}
 
@@ -91,10 +89,33 @@ func updatePoolWeight(cmd *cobra.Command, args []string) {
 
 	if err := storeCtx.PoolParamService.
 		Upsert(weightParams.Address, weightParams.TradeWeight, weightParams.LiquidityWeight); err != nil {
-		logrus.WithError(err).Info("Failed to update pool weight values")
+		logrus.WithError(err).Info("Failed to upsert pool weight values")
 		return
 	}
-	logrus.Info("Succeed to update pool weight values")
+
+	logrus.Info("Succeed to upsert pool weight values")
+}
+
+func getPoolWeight(cmd *cobra.Command, args []string) {
+	storeCtx := util.MustInitStoreContext()
+	defer storeCtx.Close()
+
+	if err := validatePoolWeightParams(); err != nil {
+		logrus.WithError(err).Info("Invalid command config")
+		return
+	}
+
+	pool, err := storeCtx.PoolParamService.Get(weightParams.Address)
+	if err != nil {
+		logrus.WithError(err).Info("Failed to get pool weight values")
+		return
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"address":         pool.Address,
+		"tradeWeight":     pool.TradeWeight,
+		"liquidityWeight": pool.LiquidityWeight,
+	}).Info("Succeed to get pool weight values")
 }
 
 func listPoolWeight(cmd *cobra.Command, args []string) {
@@ -129,23 +150,21 @@ func validatePoolWeightParams() error {
 	return nil
 }
 
-func hookPoolWeightParams(cmd *cobra.Command, tradeWeightMust, liquidityWeightMust bool) {
+func hookPoolWeightParams(cmd *cobra.Command, hookTradeWeight, hookLiquidityWeight bool) {
 	cmd.Flags().StringVarP(
 		&weightParams.Address, "pool", "p", "", "pool address",
 	)
 	cmd.MarkFlagRequired("pool")
 
-	cmd.Flags().Uint8VarP(
-		&weightParams.TradeWeight, "trade", "t", 0, "trade weight",
-	)
-	if tradeWeightMust {
-		cmd.MarkFlagRequired("trade")
+	if hookTradeWeight {
+		cmd.Flags().Uint8VarP(
+			&weightParams.TradeWeight, "trade", "t", 0, "trade weight",
+		)
 	}
 
-	cmd.Flags().Uint8VarP(
-		&weightParams.LiquidityWeight, "liquidity", "l", 0, "liquidity weight",
-	)
-	if liquidityWeightMust {
-		cmd.MarkFlagRequired("liquidity")
+	if hookLiquidityWeight {
+		cmd.Flags().Uint8VarP(
+			&weightParams.LiquidityWeight, "liquidity", "l", 0, "liquidity weight",
+		)
 	}
 }

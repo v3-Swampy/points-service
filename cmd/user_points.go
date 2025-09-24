@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"regexp"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
@@ -10,9 +12,11 @@ import (
 )
 
 type userPointsParams struct {
-	Address         string // user address
-	TradePoints     uint32 // trade points
-	LiquidityPoints uint32 // liquidity points
+	Address              string          // user address
+	TradePoints          decimal.Decimal // trade points
+	LiquidityPoints      decimal.Decimal // liquidity points
+	TradePointsParam     uint32
+	LiquidityPointsParam string
 }
 
 var (
@@ -26,10 +30,10 @@ var (
 		},
 	}
 
-	getUserPointsCmd = &cobra.Command{
-		Use:   "get",
-		Short: "Get user points",
-		Run:   getUserPoints,
+	insertUserPointsCmd = &cobra.Command{
+		Use:   "insert",
+		Short: "Insert user points",
+		Run:   insertUserPoints,
 	}
 
 	increaseUserPointsCmd = &cobra.Command{
@@ -43,28 +47,93 @@ var (
 		Short: "Decrease user points",
 		Run:   decrUserPoints,
 	}
+
+	getUserPointsCmd = &cobra.Command{
+		Use:   "get",
+		Short: "Get user points",
+		Run:   getUserPoints,
+	}
 )
 
 func init() {
 	rootCmd.AddCommand(userPointsCmd)
 
-	userPointsCmd.AddCommand(getUserPointsCmd)
-	hookUserPointsParams(getUserPointsCmd, false, false)
+	userPointsCmd.AddCommand(insertUserPointsCmd)
+	hookUserPointsParams(insertUserPointsCmd, true, true)
 
 	userPointsCmd.AddCommand(increaseUserPointsCmd)
 	hookUserPointsParams(increaseUserPointsCmd, true, true)
 
 	userPointsCmd.AddCommand(decreaseUserPointsCmd)
 	hookUserPointsParams(decreaseUserPointsCmd, true, true)
+
+	userPointsCmd.AddCommand(getUserPointsCmd)
+	hookUserPointsParams(getUserPointsCmd, false, false)
+}
+
+func insertUserPoints(cmd *cobra.Command, args []string) {
+	storeCtx := util.MustInitStoreContext()
+	defer storeCtx.Close()
+
+	err := validateAndConvertUserPointsParams(true, true)
+	if err != nil {
+		logrus.WithError(err).Info("Invalid command config")
+		return
+	}
+
+	if _, err = storeCtx.UserService.
+		Add(pointsParams.Address, pointsParams.TradePoints, pointsParams.LiquidityPoints); err != nil {
+		logrus.WithError(err).Info("Failed to insert user points")
+		return
+	}
+
+	logrus.Info("Succeed to insert user points")
+}
+
+func incrUserPoints(cmd *cobra.Command, args []string) {
+	deltaUpdateUserPoints(false)
+}
+
+func decrUserPoints(cmd *cobra.Command, args []string) {
+	deltaUpdateUserPoints(true)
+}
+
+func deltaUpdateUserPoints(decrease bool) {
+	storeCtx := util.MustInitStoreContext()
+	defer storeCtx.Close()
+
+	err := validateAndConvertUserPointsParams(true, true)
+	if err != nil {
+		logrus.WithError(err).Info("Invalid command config")
+		return
+	}
+
+	if pointsParams.TradePoints.Equal(decimal.Zero) && pointsParams.LiquidityPoints.Equal(decimal.Zero) {
+		logrus.Info("At least one of --trade or --liquidity is required.")
+		return
+	}
+
+	if decrease {
+		pointsParams.TradePoints = pointsParams.TradePoints.Neg()
+		pointsParams.LiquidityPoints = pointsParams.LiquidityPoints.Neg()
+	}
+
+	if err := storeCtx.UserService.
+		DeltaUpdate(pointsParams.Address, pointsParams.TradePoints, pointsParams.LiquidityPoints); err != nil {
+		logrus.WithError(err).Info("Failed to update user points")
+		return
+	}
+
+	logrus.Info("Succeed to update user points")
 }
 
 func getUserPoints(cmd *cobra.Command, args []string) {
 	storeCtx := util.MustInitStoreContext()
 	defer storeCtx.Close()
 
-	err := validateUserPointsParams()
+	err := validateAndConvertUserPointsParams(false, false)
 	if err != nil {
-		logrus.WithField("config", weightParams).WithError(err).Info("Invalid command config")
+		logrus.WithError(err).Info("Invalid command config")
 		return
 	}
 
@@ -74,57 +143,38 @@ func getUserPoints(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	logrus.Info("Succeed to get user points:")
 	logrus.WithFields(logrus.Fields{
 		"address":         user.Address,
 		"tradePoints":     user.TradePoints,
 		"liquidityPoints": user.LiquidityPoints,
-	}).Info("")
+	}).Info("Succeed to get user points")
 }
 
-func incrUserPoints(cmd *cobra.Command, args []string) {
-	storeCtx := util.MustInitStoreContext()
-	defer storeCtx.Close()
-	deltaUpsertUserPoints(storeCtx, false)
-}
-
-func decrUserPoints(cmd *cobra.Command, args []string) {
-	storeCtx := util.MustInitStoreContext()
-	defer storeCtx.Close()
-	deltaUpsertUserPoints(storeCtx, true)
-}
-
-func deltaUpsertUserPoints(storeCtx util.StoreContext, decrease bool) {
-	err := validateUserPointsParams()
-	if err != nil {
-		logrus.WithField("config", weightParams).WithError(err).Info("Invalid command config")
-		return
-	}
-
-	if pointsParams.TradePoints == 0 && pointsParams.LiquidityPoints == 0 {
-		logrus.Info("At least one of --trade or --liquidity is required.")
-		return
-	}
-
-	tradePoints := decimal.NewFromInt(int64(pointsParams.TradePoints))
-	liquidityPoints := decimal.NewFromInt(int64(pointsParams.LiquidityPoints))
-	if decrease {
-		tradePoints = tradePoints.Neg()
-		liquidityPoints = liquidityPoints.Neg()
-	}
-
-	if err := storeCtx.UserService.
-		DeltaUpsert(pointsParams.Address, tradePoints, liquidityPoints); err != nil {
-		logrus.WithError(err).Info("Failed to update user points")
-		return
-	}
-	logrus.Info("Succeed to update user points")
-}
-
-func validateUserPointsParams() error {
+func validateAndConvertUserPointsParams(validateTradePoints bool, validateLiquidityPoints bool) error {
 	if !common.IsHexAddress(pointsParams.Address) {
 		return errors.Errorf("Invalid hex address of user %v", pointsParams.Address)
 	}
+
+	if validateTradePoints {
+		pointsParams.TradePoints = decimal.NewFromInt(int64(pointsParams.TradePointsParam))
+	}
+
+	if validateLiquidityPoints {
+		matched, err := regexp.MatchString(`^(0|[1-9]\d*)(\.\d)?$`, pointsParams.LiquidityPointsParam)
+		if err != nil {
+			return errors.Errorf("Invalid liquidity points value %v", pointsParams.LiquidityPointsParam)
+		}
+		if !matched {
+			return errors.Errorf("Invalid liquidity points value %v. Only numbers are supported, with a maximum of one decimal", pointsParams.LiquidityPointsParam)
+		}
+
+		liquidityPoints, err := decimal.NewFromString(pointsParams.LiquidityPointsParam)
+		if err != nil {
+			return err
+		}
+		pointsParams.LiquidityPoints = liquidityPoints
+	}
+
 	return nil
 }
 
@@ -136,13 +186,13 @@ func hookUserPointsParams(cmd *cobra.Command, hookTrade, hookLiquidity bool) {
 
 	if hookTrade {
 		cmd.Flags().Uint32VarP(
-			&pointsParams.TradePoints, "trade", "t", 0, "trade points",
+			&pointsParams.TradePointsParam, "trade", "t", 0, "trade points",
 		)
 	}
 
 	if hookLiquidity {
-		cmd.Flags().Uint32VarP(
-			&pointsParams.LiquidityPoints, "liquidity", "l", 0, "liquidity points",
+		cmd.Flags().StringVarP(
+			&pointsParams.LiquidityPointsParam, "liquidity", "l", "0", "liquidity points",
 		)
 	}
 }

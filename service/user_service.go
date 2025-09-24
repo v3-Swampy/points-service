@@ -35,33 +35,52 @@ func (service *UserService) Get(address string) (*model.User, error) {
 	return &user, nil
 }
 
-func (service *UserService) DeltaUpsert(address string, tradePoints decimal.Decimal, liquidityPoints decimal.Decimal) error {
+func (service *UserService) Add(address string, tradePoints decimal.Decimal, liquidityPoints decimal.Decimal) (uint64, error) {
+	user := &model.User{
+		Address:         address,
+		TradePoints:     tradePoints,
+		LiquidityPoints: liquidityPoints,
+	}
+
+	if err := service.store.DB.Create(user).Error; err != nil {
+		return 0, api.ErrDatabaseCause(err, "Failed to create user")
+	}
+
+	return user.ID, nil
+}
+
+func (service *UserService) DeltaUpdate(address string, tradePoints decimal.Decimal, liquidityPoints decimal.Decimal) error {
 	var user model.User
 	found, err := service.store.Get(&user, "address = ?", address)
+
 	if err != nil {
 		return api.ErrDatabaseCause(err, "Failed to get user by address")
 	}
 
 	if !found {
-		bean := &model.User{
-			Address:         address,
-			TradePoints:     tradePoints,
-			LiquidityPoints: liquidityPoints,
-		}
-		return service.store.DB.Create(bean).Error
+		return api.ErrValidationStr("Failed to find user by address")
 	}
 
-	newParam := map[string]any{}
-	if !tradePoints.Equal(decimal.Zero) {
-		newParam["trade_points"] = user.TradePoints.Add(tradePoints)
-	}
-	if !liquidityPoints.Equal(decimal.Zero) {
-		newParam["liquidity_points"] = user.LiquidityPoints.Add(liquidityPoints)
+	result := service.store.DB.Exec(`
+            UPDATE users 
+            SET 
+                trade_points = trade_points + ?,
+                liquidity_points = liquidity_points + ?,
+                updated_at = NOW()
+            WHERE address = ? 
+            AND (trade_points + ?) >= 0 
+            AND (liquidity_points + ?) >= 0
+        `, tradePoints, liquidityPoints, address, tradePoints, liquidityPoints)
+
+	if result.Error != nil {
+		return result.Error
 	}
 
-	return service.store.DB.Model(&model.User{}).
-		Where("id = ?", user.ID).
-		Updates(newParam).Error
+	if result.RowsAffected == 0 {
+		return api.ErrValidationStr("Points cannot be negative after update")
+	}
+
+	return nil
 }
 
 func (service *UserService) BatchDeltaUpsert(users []*model.User, dbTx ...*gorm.DB) error {
