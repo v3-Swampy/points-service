@@ -2,11 +2,13 @@ package parsing
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"github.com/v3-Swampy/points-service/blockchain/scan"
 	"golang.org/x/sync/errgroup"
 )
@@ -29,6 +31,7 @@ type Poller struct {
 	buf               chan HourlyData
 	nextHourTimestamp int64
 	pools             []common.Address
+	logger            *logrus.Entry
 }
 
 // NewPoller creates a new poller.
@@ -59,6 +62,7 @@ func NewPoller(config PollConfig, nextHourTimestamp int64, pools ...common.Addre
 		buf:               make(chan HourlyData, DefaultBufSize),
 		nextHourTimestamp: nextHourTimestamp,
 		pools:             pools,
+		logger:            logrus.WithField("worker", "sync.poller"),
 	}, nil
 }
 
@@ -75,7 +79,7 @@ func (poller *Poller) Run(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	hourTimestamp := poller.nextHourTimestamp
-	logHourTimestamp(hourTimestamp).Info("Poller started")
+	poller.logger.WithField("ts", formatTs(hourTimestamp)).Info("Poller started")
 
 	ticker := time.NewTicker(time.Millisecond)
 	defer ticker.Stop()
@@ -85,7 +89,7 @@ func (poller *Poller) Run(ctx context.Context, wg *sync.WaitGroup) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			logger = logHourTimestamp(hourTimestamp)
+			logger := poller.logger.WithField("ts", formatTs(hourTimestamp))
 
 			start := time.Now()
 
@@ -183,4 +187,9 @@ func (poller *Poller) poll(ctx context.Context, hourTimestamp int64) (HourlyData
 	}
 
 	return result, true, nil
+}
+
+func formatTs(hourTimestamp int64) string {
+	dt := time.Unix(hourTimestamp, 0).Format(time.DateTime)
+	return fmt.Sprintf("%v (%v)", dt, hourTimestamp)
 }

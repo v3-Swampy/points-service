@@ -16,10 +16,14 @@ const (
 
 type Batcher struct {
 	handler sync.EventHandler
+	logger  *logrus.Entry
 }
 
 func NewBatcher(handler sync.EventHandler) *Batcher {
-	return &Batcher{handler}
+	return &Batcher{
+		handler: handler,
+		logger:  logrus.WithField("worker", "sync.batcher"),
+	}
 }
 
 func (batcher *Batcher) Run(ctx context.Context, wg *stdSync.WaitGroup, eventCh <-chan sync.BatchEvent) {
@@ -52,7 +56,7 @@ func (batcher *Batcher) mustHandle(ctx context.Context, batch sync.BatchEvent) s
 		return sync.BatchEvent{}
 	}
 
-	logger = logHourTimestamp(batch.HourTimestamp)
+	logger := batcher.logger.WithField("ts", formatTs(batch.HourTimestamp))
 
 	for {
 		start := time.Now()
