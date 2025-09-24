@@ -97,7 +97,7 @@ func (emitter *Emitter) emit(ctx context.Context, data HourlyData) (sync.BatchEv
 		default:
 		}
 
-		logger.WithField("pool", pool).Debugf("Begin to emit for pool [%v/%v]", i+1, len(data.Pools))
+		logger.WithField("pool", pool.Address).Debugf("Begin to emit for pool [%v/%v]", i+1, len(data.Pools))
 
 		if len(pool.Trades) == 0 && len(pool.Liquidities) == 0 {
 			continue
