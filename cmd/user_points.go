@@ -143,12 +143,11 @@ func getUserPoints(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	logrus.Info("Succeed to get user points:")
 	logrus.WithFields(logrus.Fields{
 		"address":         user.Address,
 		"tradePoints":     user.TradePoints,
 		"liquidityPoints": user.LiquidityPoints,
-	}).Info("")
+	}).Info("Succeed to get user points")
 }
 
 func validateAndConvertUserPointsParams(validateTradePoints bool, validateLiquidityPoints bool) error {
