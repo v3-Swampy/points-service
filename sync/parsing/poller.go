@@ -18,10 +18,11 @@ var (
 )
 
 type PollConfig struct {
-	Endpoint string
-	Scan     string
+	Endpoint string // RPC endpoint of contract parser
+	Scan     string // Open API endpoint of Scan
 }
 
+// Poller is used to poll trade and liquidity data from contract parser.
 type Poller struct {
 	client            *Client
 	scan              *scan.Api
@@ -30,6 +31,11 @@ type Poller struct {
 	pools             []common.Address
 }
 
+// NewPoller creates a new poller.
+//
+// If the given nextHourTimestamp is 0, then retrieve the first timestamp from contract parser.
+//
+// Note, it returns error if the given pools is empty.
 func NewPoller(config PollConfig, nextHourTimestamp int64, pools ...common.Address) (*Poller, error) {
 	if len(pools) == 0 {
 		return nil, errors.New("Pools not specified")
@@ -40,6 +46,7 @@ func NewPoller(config PollConfig, nextHourTimestamp int64, pools ...common.Addre
 		return nil, errors.WithMessage(err, "Failed to create client")
 	}
 
+	// retrieve first timestamp
 	if nextHourTimestamp == 0 {
 		if nextHourTimestamp, err = client.FirstTimestamp(context.Background()); err != nil {
 			return nil, errors.WithMessage(err, "Failed to poll first timestamp")
@@ -79,13 +86,14 @@ func (poller *Poller) Run(ctx context.Context, wg *sync.WaitGroup) {
 	for {
 		select {
 		case <-ctx.Done():
-			logger.Info("Poller stopped")
 			return
 		case <-ticker.C:
 			logger = logger.WithFields(logrus.Fields{
 				"ts": hourTimestamp,
 				"dt": formatHourTimestamp(hourTimestamp),
 			})
+
+			start := time.Now()
 
 			data, ok, err := poller.poll(ctx, hourTimestamp)
 			if err != nil {
@@ -94,10 +102,9 @@ func (poller *Poller) Run(ctx context.Context, wg *sync.WaitGroup) {
 			} else if ok {
 				select {
 				case poller.buf <- data:
-					logger.Info("Poller move forward")
+					logger.WithField("elapsed", time.Since(start)).Info("Poller move forward")
 					hourTimestamp += 3600
 				case <-ctx.Done():
-					logger.Info("Poller stopped while pending on write data")
 					return
 				}
 				ticker.Reset(time.Millisecond)
