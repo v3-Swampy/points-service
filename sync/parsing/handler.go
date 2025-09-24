@@ -1,0 +1,85 @@
+package parsing
+
+import (
+	"context"
+	stdSync "sync"
+	"time"
+
+	"github.com/sirupsen/logrus"
+	"github.com/v3-Swampy/points-service/sync"
+)
+
+const (
+	DefaultEventBatchSize    = 100
+	DefaultEventBatchTimeout = time.Second * 10
+)
+
+type Batcher struct {
+	handler sync.EventHandler
+}
+
+func NewBatcher(handler sync.EventHandler) *Batcher {
+	return &Batcher{handler}
+}
+
+func (batcher *Batcher) Run(ctx context.Context, wg *stdSync.WaitGroup, eventCh <-chan Event) {
+	defer wg.Done()
+
+	var batch Event
+
+	ticker := time.NewTicker(DefaultEventBatchTimeout)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			batch = batcher.mustHandle(ctx, batch)
+			ticker.Reset(DefaultEventBatchTimeout)
+		case event := <-eventCh:
+			// merge into batch
+			batch.TimeInfo = event.TimeInfo
+			batch.Trades = append(batch.Trades, event.Trades...)
+			batch.Liquidities = append(batch.Liquidities, event.Liquidities...)
+
+			if len(batch.Trades)+len(batch.Liquidities) >= DefaultEventBatchSize {
+				batch = batcher.mustHandle(ctx, batch)
+				ticker.Reset(DefaultEventBatchTimeout)
+			}
+		}
+	}
+}
+func (batcher *Batcher) mustHandle(ctx context.Context, batch Event) Event {
+	if batch.HourTimestamp == 0 {
+		return Event{}
+	}
+
+	logger = logger.WithFields(logrus.Fields{
+		"ts": batch.HourTimestamp,
+		"dt": formatHourTimestamp(batch.HourTimestamp),
+	})
+
+	for {
+		start := time.Now()
+
+		if err := batcher.handler.OnEventBatch(batch.TimeInfo, batch.Trades, batch.Liquidities); err != nil {
+			logger.WithError(err).Warn("Failed to handle events in batch")
+
+			select {
+			case <-ctx.Done():
+				return Event{}
+			case <-time.After(DefaultIntervalError):
+				logger.Debug("Batcher retry to handle events")
+			}
+		} else {
+			logger.WithFields(logrus.Fields{
+				"elapsed":   time.Since(start),
+				"trade":     len(batch.Trades),
+				"liquidity": len(batch.Liquidities),
+			}).Info("Batch events handled")
+
+			return Event{}
+		}
+	}
+}
