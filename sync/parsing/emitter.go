@@ -57,7 +57,11 @@ func (emitter *Emitter) Run(ctx context.Context, wg *stdSync.WaitGroup, dataCh <
 }
 
 func (emitter *Emitter) mustEmit(ctx context.Context, data HourlyData) {
-	logger := emitter.logger.WithField("ts", formatTs(data.HourTimestamp))
+	logger := emitter.logger.WithFields(logrus.Fields{
+		"ts":    formatTs(data.HourTimestamp),
+		"minBN": data.MinBlockNumber,
+		"maxBN": data.MaxBlockNumber,
+	})
 
 	for {
 		start := time.Now()
