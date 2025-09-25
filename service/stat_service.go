@@ -53,7 +53,7 @@ func (service *StatService) OnEventBatch(event sync.BatchEvent) error {
 		return err
 	}
 
-	return service.Store(event.HourTimestamp, users, pools)
+	return service.Store(event.Timestamp, users, pools)
 }
 
 func (service *StatService) aggregateTrade(event []sync.TradeEvent, users map[string]*model.User,
@@ -98,7 +98,7 @@ func (service *StatService) aggregateLiquidity(event []sync.LiquidityEvent, user
 		if err != nil {
 			return err
 		}
-		liquidityPoints := liquidity.Value0Secs.Add(liquidity.Value1Secs).Div(decimal.NewFromInt(3600)).
+		liquidityPoints := liquidity.Value0.Add(liquidity.Value1).
 			Mul(decimal.NewFromFloat(0.1)).Mul(decimal.NewFromInt(int64(weight.LiquidityWeight)))
 
 		if u, exists := users[user]; exists {

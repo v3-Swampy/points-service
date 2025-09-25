@@ -26,20 +26,21 @@ type PollConfig struct {
 
 // Poller is used to poll trade and liquidity data from contract parser.
 type Poller struct {
-	client            *Client
-	scan              *scan.Api
-	buf               chan HourlyData
-	nextHourTimestamp int64
-	pools             []common.Address
-	logger            *logrus.Entry
+	client        *Client
+	scan          *scan.Api
+	buf           chan Snapshot
+	nextTimestamp int64
+	intervalSecs  int64
+	pools         []common.Address
+	logger        *logrus.Entry
 }
 
 // NewPoller creates a new poller.
 //
-// If the given nextHourTimestamp is 0, then retrieve the first timestamp from contract parser.
+// If the given lastTimestamp is 0, then retrieve the first timestamp from contract parser.
 //
 // Note, it returns error if the given pools is empty.
-func NewPoller(config PollConfig, nextHourTimestamp int64, pools ...common.Address) (*Poller, error) {
+func NewPoller(config PollConfig, lastTimestamp int64, pools ...common.Address) (*Poller, error) {
 	if len(pools) == 0 {
 		return nil, errors.New("Pools not specified")
 	}
@@ -49,20 +50,29 @@ func NewPoller(config PollConfig, nextHourTimestamp int64, pools ...common.Addre
 		return nil, errors.WithMessage(err, "Failed to create client")
 	}
 
+	intervalSecs, err := client.SnapshotIntervalSecs(context.Background())
+	if err != nil {
+		return nil, errors.WithMessage(err, "Failed to get snapshot interval")
+	}
+
 	// retrieve first timestamp
-	if nextHourTimestamp == 0 {
-		if nextHourTimestamp, err = client.FirstTimestamp(context.Background()); err != nil {
+	var nextTimestamp int64
+	if nextTimestamp == 0 {
+		if nextTimestamp, err = client.FirstTimestamp(context.Background()); err != nil {
 			return nil, errors.WithMessage(err, "Failed to poll first timestamp")
 		}
+	} else {
+		nextTimestamp = lastTimestamp + intervalSecs
 	}
 
 	return &Poller{
-		client:            client,
-		scan:              scan.NewApi(config.Scan),
-		buf:               make(chan HourlyData, DefaultBufSize),
-		nextHourTimestamp: nextHourTimestamp,
-		pools:             pools,
-		logger:            logrus.WithField("worker", "sync.poller"),
+		client:        client,
+		scan:          scan.NewApi(config.Scan),
+		buf:           make(chan Snapshot, DefaultBufSize),
+		nextTimestamp: nextTimestamp,
+		intervalSecs:  intervalSecs,
+		pools:         pools,
+		logger:        logrus.WithField("worker", "sync.poller"),
 	}, nil
 }
 
@@ -71,15 +81,15 @@ func (poller *Poller) Close() {
 	close(poller.buf)
 }
 
-func (poller *Poller) Ch() <-chan HourlyData {
+func (poller *Poller) Ch() <-chan Snapshot {
 	return poller.buf
 }
 
 func (poller *Poller) Run(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	hourTimestamp := poller.nextHourTimestamp
-	poller.logger.WithField("ts", formatTs(hourTimestamp)).Info("Poller started")
+	timestamp := poller.nextTimestamp
+	poller.logger.WithField("ts", formatTs(timestamp)).Info("Poller started")
 
 	ticker := time.NewTicker(time.Millisecond)
 	defer ticker.Stop()
@@ -89,11 +99,11 @@ func (poller *Poller) Run(ctx context.Context, wg *sync.WaitGroup) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			logger := poller.logger.WithField("ts", formatTs(hourTimestamp))
+			logger := poller.logger.WithField("ts", formatTs(timestamp))
 
 			start := time.Now()
 
-			data, ok, err := poller.poll(ctx, hourTimestamp)
+			data, ok, err := poller.poll(ctx, timestamp)
 			if err != nil {
 				logger.WithError(err).Warn("Failed to poll data from contract parser")
 				ticker.Reset(DefaultIntervalError)
@@ -101,7 +111,7 @@ func (poller *Poller) Run(ctx context.Context, wg *sync.WaitGroup) {
 				select {
 				case poller.buf <- data:
 					logger.WithField("elapsed", time.Since(start)).Info("Poller move forward")
-					hourTimestamp += 3600
+					timestamp += poller.intervalSecs
 				case <-ctx.Done():
 					return
 				}
@@ -114,20 +124,21 @@ func (poller *Poller) Run(ctx context.Context, wg *sync.WaitGroup) {
 	}
 }
 
-func (poller *Poller) poll(ctx context.Context, hourTimestamp int64) (HourlyData, bool, error) {
+func (poller *Poller) poll(ctx context.Context, timestamp int64) (Snapshot, bool, error) {
 	// check if data avaialbe
-	latestHourTimestamp, err := poller.client.LatestTimestamp(ctx)
+	latestTimestamp, err := poller.client.LatestTimestamp(ctx)
 	if err != nil {
-		return HourlyData{}, false, errors.WithMessage(err, "Failed to poll latest timestamp")
+		return Snapshot{}, false, errors.WithMessage(err, "Failed to poll latest timestamp")
 	}
 
-	if hourTimestamp > latestHourTimestamp {
-		return HourlyData{}, false, nil
+	if timestamp > latestTimestamp {
+		return Snapshot{}, false, nil
 	}
 
 	// poll data in async
-	var result HourlyData
-	result.HourTimestamp = hourTimestamp
+	var result Snapshot
+	result.Timestamp = timestamp
+	result.IntervalSecs = poller.intervalSecs
 
 	var group *errgroup.Group
 	group, ctx = errgroup.WithContext(ctx)
@@ -145,11 +156,11 @@ func (poller *Poller) poll(ctx context.Context, hourTimestamp int64) (HourlyData
 				Address: pool,
 			}
 
-			if data.Trades, err = poller.client.GetHourlyTradeDataAll(ctx, pool, hourTimestamp); err != nil {
+			if data.Trades, err = poller.client.GetTradeDataAll(ctx, pool, timestamp); err != nil {
 				return errors.WithMessage(err, "Failed to poll trade data")
 			}
 
-			if data.Liquidities, err = poller.client.GetHourlyLiquidityDataAll(ctx, pool, hourTimestamp); err != nil {
+			if data.Liquidities, err = poller.client.GetLiquidityDataAll(ctx, pool, timestamp); err != nil {
 				return errors.WithMessage(err, "Failed to poll liquidity data")
 			}
 
@@ -163,8 +174,8 @@ func (poller *Poller) poll(ctx context.Context, hourTimestamp int64) (HourlyData
 	var minBlockNumber uint64
 	group.Go(func() error {
 		var startTime int64
-		if hourTimestamp > 3600 {
-			startTime = hourTimestamp - 3600
+		if timestamp > poller.intervalSecs {
+			startTime = timestamp - poller.intervalSecs
 		}
 
 		bn, err := poller.scan.GetBlockNumberByTime(startTime, true)
@@ -184,13 +195,13 @@ func (poller *Poller) poll(ctx context.Context, hourTimestamp int64) (HourlyData
 	// poll max block number from scan
 	var maxBlockNumber uint64
 	group.Go(func() error {
-		bn, err := poller.scan.GetBlockNumberByTime(hourTimestamp, false)
+		bn, err := poller.scan.GetBlockNumberByTime(timestamp, false)
 		if err != nil {
 			return errors.WithMessage(err, "Failed to query max block number")
 		}
 
 		if bn == 0 {
-			return errors.Errorf("Failed to get max block number from scan, 0 returned by timestamp %v", hourTimestamp)
+			return errors.Errorf("Failed to get max block number from scan, 0 returned by timestamp %v", timestamp)
 		}
 
 		maxBlockNumber = bn
@@ -199,7 +210,7 @@ func (poller *Poller) poll(ctx context.Context, hourTimestamp int64) (HourlyData
 	})
 
 	if err := group.Wait(); err != nil {
-		return HourlyData{}, false, errors.WithMessage(err, "Any async worker failed")
+		return Snapshot{}, false, errors.WithMessage(err, "Any async worker failed")
 	}
 
 	result.MinBlockNumber = minBlockNumber
@@ -220,7 +231,7 @@ func (poller *Poller) poll(ctx context.Context, hourTimestamp int64) (HourlyData
 	return result, true, nil
 }
 
-func formatTs(hourTimestamp int64) string {
-	dt := time.Unix(hourTimestamp, 0).Format(time.DateTime)
-	return fmt.Sprintf("%v (%v)", dt, hourTimestamp)
+func formatTs(timestamp int64) string {
+	dt := time.Unix(timestamp, 0).Format(time.DateTime)
+	return fmt.Sprintf("%v (%v)", dt, timestamp)
 }

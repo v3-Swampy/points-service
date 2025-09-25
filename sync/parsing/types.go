@@ -29,8 +29,10 @@ type PoolData struct {
 	Liquidities []LiquidityData
 }
 
-type HourlyData struct {
+type Snapshot struct {
 	sync.TimeInfo
+
+	IntervalSecs int64
 
 	Pools []PoolData
 }

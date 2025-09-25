@@ -37,22 +37,26 @@ func (client *Client) LatestTimestamp(ctx context.Context) (int64, error) {
 	return providers.CallContext[int64](client.Provider, ctx, "latestTimestamp")
 }
 
-func (client *Client) GetHourlyTradeData(ctx context.Context, pool common.Address, hourTimestamp int64, offset int, limit ...int) (*PagingResult[TradeData], error) {
-	if len(limit) == 0 {
-		return providers.CallContext[*PagingResult[TradeData]](client.Provider, ctx, "getHourlyTradeData", pool, hourTimestamp, offset)
-	}
-
-	return providers.CallContext[*PagingResult[TradeData]](client.Provider, ctx, "getHourlyTradeData", pool, hourTimestamp, offset, limit[0])
+func (client *Client) SnapshotIntervalSecs(ctx context.Context) (int64, error) {
+	return providers.CallContext[int64](client.Provider, ctx, "snapshotInterval")
 }
 
-func (client *Client) GetHourlyTradeDataAll(ctx context.Context, pool common.Address, hourTimestamp int64) ([]TradeData, error) {
+func (client *Client) GetTradeData(ctx context.Context, pool common.Address, timestamp int64, offset int, limit ...int) (*PagingResult[TradeData], error) {
+	if len(limit) == 0 {
+		return providers.CallContext[*PagingResult[TradeData]](client.Provider, ctx, "getHourlyTradeData", pool, timestamp, offset)
+	}
+
+	return providers.CallContext[*PagingResult[TradeData]](client.Provider, ctx, "getHourlyTradeData", pool, timestamp, offset, limit[0])
+}
+
+func (client *Client) GetTradeDataAll(ctx context.Context, pool common.Address, timestamp int64) ([]TradeData, error) {
 	var offset int
 	var all []TradeData
 
 	for {
-		result, err := client.GetHourlyTradeData(ctx, pool, hourTimestamp, offset)
+		result, err := client.GetTradeData(ctx, pool, timestamp, offset)
 		if err != nil {
-			return nil, errors.WithMessagef(err, "Failed to get hourly trade data with offset %v", offset)
+			return nil, errors.WithMessagef(err, "Failed to get trade data with offset %v", offset)
 		}
 
 		if result == nil {
@@ -73,22 +77,22 @@ func (client *Client) GetHourlyTradeDataAll(ctx context.Context, pool common.Add
 	}
 }
 
-func (client *Client) GetHourlyLiquidityData(ctx context.Context, pool common.Address, hourTimestamp int64, offset int, limit ...int) (*PagingResult[LiquidityData], error) {
+func (client *Client) GetLiquidityData(ctx context.Context, pool common.Address, timestamp int64, offset int, limit ...int) (*PagingResult[LiquidityData], error) {
 	if len(limit) == 0 {
-		return providers.CallContext[*PagingResult[LiquidityData]](client.Provider, ctx, "getHourlyLiquidityData", pool, hourTimestamp, offset)
+		return providers.CallContext[*PagingResult[LiquidityData]](client.Provider, ctx, "getHourlyLiquidityData", pool, timestamp, offset)
 	}
 
-	return providers.CallContext[*PagingResult[LiquidityData]](client.Provider, ctx, "getHourlyLiquidityData", pool, hourTimestamp, offset, limit[0])
+	return providers.CallContext[*PagingResult[LiquidityData]](client.Provider, ctx, "getHourlyLiquidityData", pool, timestamp, offset, limit[0])
 }
 
-func (client *Client) GetHourlyLiquidityDataAll(ctx context.Context, pool common.Address, hourTimestamp int64) ([]LiquidityData, error) {
+func (client *Client) GetLiquidityDataAll(ctx context.Context, pool common.Address, timestamp int64) ([]LiquidityData, error) {
 	var offset int
 	var all []LiquidityData
 
 	for {
-		result, err := client.GetHourlyLiquidityData(ctx, pool, hourTimestamp, offset)
+		result, err := client.GetLiquidityData(ctx, pool, timestamp, offset)
 		if err != nil {
-			return nil, errors.WithMessagef(err, "Failed to get hourly liquidity data with offset %v", offset)
+			return nil, errors.WithMessagef(err, "Failed to get liquidity data with offset %v", offset)
 		}
 
 		if result == nil {

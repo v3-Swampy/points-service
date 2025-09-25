@@ -21,12 +21,13 @@ type TradeEvent struct {
 type LiquidityEvent struct {
 	PoolEvent
 
-	Value0Secs decimal.Decimal // liquidity0 * price * secs
-	Value1Secs decimal.Decimal // liquidity0 * price * secs
+	Value0 decimal.Decimal // liquidity0 * price
+	Value1 decimal.Decimal // liquidity1 * price
 }
 
 type TimeInfo struct {
-	HourTimestamp  int64
+	Timestamp int64
+
 	MinBlockNumber uint64
 	MaxBlockNumber uint64
 }
