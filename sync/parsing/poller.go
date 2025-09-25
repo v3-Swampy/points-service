@@ -180,7 +180,6 @@ func (poller *Poller) poll(ctx context.Context, hourTimestamp int64) (HourlyData
 
 		return nil
 	})
-	result.MinBlockNumber = minBlockNumber
 
 	// poll max block number from scan
 	var maxBlockNumber uint64
@@ -198,15 +197,24 @@ func (poller *Poller) poll(ctx context.Context, hourTimestamp int64) (HourlyData
 
 		return nil
 	})
-	result.MaxBlockNumber = maxBlockNumber
 
 	if err := group.Wait(); err != nil {
 		return HourlyData{}, false, errors.WithMessage(err, "Any async worker failed")
 	}
 
+	result.MinBlockNumber = minBlockNumber
+	result.MaxBlockNumber = maxBlockNumber
+
 	for i := 0; i < numPools; i++ {
 		data := <-poolDataCh
 		result.Pools = append(result.Pools, data)
+	}
+
+	if result.MinBlockNumber == 0 || result.MaxBlockNumber == 0 {
+		poller.logger.WithFields(logrus.Fields{
+			"min": result.MinBlockNumber,
+			"max": result.MaxBlockNumber,
+		}).Fatal("Invalid block number retrieved from scan")
 	}
 
 	return result, true, nil
