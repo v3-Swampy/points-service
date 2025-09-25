@@ -94,6 +94,8 @@ func (poller *Poller) Run(ctx context.Context, wg *sync.WaitGroup) {
 	ticker := time.NewTicker(time.Millisecond)
 	defer ticker.Stop()
 
+	var lastMaxBlockNumber uint64
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -103,7 +105,7 @@ func (poller *Poller) Run(ctx context.Context, wg *sync.WaitGroup) {
 
 			start := time.Now()
 
-			data, ok, err := poller.poll(ctx, timestamp)
+			data, ok, err := poller.poll(ctx, timestamp, lastMaxBlockNumber)
 			if err != nil {
 				logger.WithError(err).Warn("Failed to poll data from contract parser")
 				ticker.Reset(DefaultIntervalError)
@@ -112,6 +114,7 @@ func (poller *Poller) Run(ctx context.Context, wg *sync.WaitGroup) {
 				case poller.buf <- data:
 					logger.WithField("elapsed", time.Since(start)).Info("Poller move forward")
 					timestamp += poller.intervalSecs
+					lastMaxBlockNumber = data.MaxBlockNumber
 				case <-ctx.Done():
 					return
 				}
@@ -124,7 +127,7 @@ func (poller *Poller) Run(ctx context.Context, wg *sync.WaitGroup) {
 	}
 }
 
-func (poller *Poller) poll(ctx context.Context, timestamp int64) (Snapshot, bool, error) {
+func (poller *Poller) poll(ctx context.Context, timestamp int64, lastMaxBlockNumber uint64) (Snapshot, bool, error) {
 	// check if data avaialbe
 	latestTimestamp, err := poller.client.LatestTimestamp(ctx)
 	if err != nil {
@@ -173,6 +176,11 @@ func (poller *Poller) poll(ctx context.Context, timestamp int64) (Snapshot, bool
 	// poll min block number from scan
 	var minBlockNumber uint64
 	group.Go(func() error {
+		if lastMaxBlockNumber > 0 {
+			minBlockNumber = lastMaxBlockNumber + 1
+			return nil
+		}
+
 		var startTime int64
 		if timestamp > poller.intervalSecs {
 			startTime = timestamp - poller.intervalSecs
@@ -195,7 +203,7 @@ func (poller *Poller) poll(ctx context.Context, timestamp int64) (Snapshot, bool
 	// poll max block number from scan
 	var maxBlockNumber uint64
 	group.Go(func() error {
-		bn, err := poller.scan.GetBlockNumberByTime(timestamp, false)
+		bn, err := poller.scan.GetBlockNumberByTime(timestamp-1, false)
 		if err != nil {
 			return errors.WithMessage(err, "Failed to query max block number")
 		}

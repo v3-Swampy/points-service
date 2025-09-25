@@ -14,10 +14,12 @@ type Response[T any] struct {
 }
 
 func (resp *Response[T]) GetResult() (v T, err error) {
-	if resp.Status != "1" {
-		err = errors.Errorf("Error(%v): %v", resp.Status, resp.Message)
-	} else {
+	if resp.Status == "1" {
 		v = resp.Result
+	} else if len(resp.Status) == 0 {
+		err = errors.Errorf("Scan Error: %v", resp.Message)
+	} else {
+		err = errors.Errorf("Scan Error (%v): %v", resp.Status, resp.Message)
 	}
 
 	return
