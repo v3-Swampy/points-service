@@ -161,7 +161,12 @@ func (poller *Poller) poll(ctx context.Context, hourTimestamp int64) (HourlyData
 
 	// poll min block number from scan
 	group.Go(func() (err error) {
-		if result.MinBlockNumber, err = poller.scan.GetBlockNumberByTime(hourTimestamp, true); err != nil {
+		var startTime int64
+		if hourTimestamp > 3600 {
+			startTime = hourTimestamp - 3600
+		}
+
+		if result.MinBlockNumber, err = poller.scan.GetBlockNumberByTime(startTime, true); err != nil {
 			return errors.WithMessage(err, "Failed to query min block number")
 		}
 
@@ -170,7 +175,7 @@ func (poller *Poller) poll(ctx context.Context, hourTimestamp int64) (HourlyData
 
 	// poll max block number from scan
 	group.Go(func() (err error) {
-		if result.MaxBlockNumber, err = poller.scan.GetBlockNumberByTime(hourTimestamp+3600, false); err != nil {
+		if result.MaxBlockNumber, err = poller.scan.GetBlockNumberByTime(hourTimestamp, false); err != nil {
 			return errors.WithMessage(err, "Failed to query max block number")
 		}
 
