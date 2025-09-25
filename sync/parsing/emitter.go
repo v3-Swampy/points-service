@@ -16,6 +16,8 @@ import (
 	"github.com/v3-Swampy/points-service/sync"
 )
 
+var DefaultPriceSamples = uint64(4)
+
 // Emitter is used to generate event based on polled data from contract parser.
 type Emitter struct {
 	buf    chan sync.BatchEvent
@@ -172,11 +174,24 @@ func (emitter *Emitter) getPrice(minBlockNumber, maxBlockNumber uint64, pool, to
 		return price, true, nil
 	}
 
+	if minBlockNumber > maxBlockNumber {
+		emitter.logger.WithFields(logrus.Fields{
+			"min": minBlockNumber,
+			"max": maxBlockNumber,
+		}).Error("Invalid block number range")
+	}
+
+	// sample n prices
+	step := (maxBlockNumber + 1 - minBlockNumber) / DefaultPriceSamples
+	if step == 0 {
+		step = 1
+	}
+
 	sumPrices := decimal.Zero
-	step := (maxBlockNumber - minBlockNumber + 1) / 6
 	var count int64
 
-	for bn := minBlockNumber + step; bn < maxBlockNumber; bn += step {
+	// ensure the maxBlockNumber sampled in case that liquidity added at maxBlockNumber
+	for bn := maxBlockNumber; bn >= minBlockNumber && bn <= maxBlockNumber; bn -= step {
 		opts := bind.CallOpts{
 			BlockNumber: new(big.Int).SetUint64(bn),
 		}
@@ -186,8 +201,19 @@ func (emitter *Emitter) getPrice(minBlockNumber, maxBlockNumber uint64, pool, to
 			return decimal.Zero, false, errors.WithMessagef(err, "Failed to sample token price at block %v", bn)
 		}
 
+		if price.IsZero() {
+			break
+		}
+
 		sumPrices = sumPrices.Add(price)
 		count++
+	}
+
+	if count == 0 {
+		emitter.logger.WithFields(logrus.Fields{
+			"minBN": minBlockNumber,
+			"maxBN": maxBlockNumber,
+		}).Fatal("No token price sampled")
 	}
 
 	price := sumPrices.Div(decimal.NewFromInt(count))
