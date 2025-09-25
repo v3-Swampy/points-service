@@ -160,27 +160,45 @@ func (poller *Poller) poll(ctx context.Context, hourTimestamp int64) (HourlyData
 	}
 
 	// poll min block number from scan
-	group.Go(func() (err error) {
+	var minBlockNumber uint64
+	group.Go(func() error {
 		var startTime int64
 		if hourTimestamp > 3600 {
 			startTime = hourTimestamp - 3600
 		}
 
-		if result.MinBlockNumber, err = poller.scan.GetBlockNumberByTime(startTime, true); err != nil {
+		bn, err := poller.scan.GetBlockNumberByTime(startTime, true)
+		if err != nil {
 			return errors.WithMessage(err, "Failed to query min block number")
 		}
 
+		if bn == 0 {
+			return errors.Errorf("Failed to get min block number from scan, 0 returned by timestamp %v", startTime)
+		}
+
+		minBlockNumber = bn
+
 		return nil
 	})
+	result.MinBlockNumber = minBlockNumber
 
 	// poll max block number from scan
-	group.Go(func() (err error) {
-		if result.MaxBlockNumber, err = poller.scan.GetBlockNumberByTime(hourTimestamp, false); err != nil {
+	var maxBlockNumber uint64
+	group.Go(func() error {
+		bn, err := poller.scan.GetBlockNumberByTime(hourTimestamp, false)
+		if err != nil {
 			return errors.WithMessage(err, "Failed to query max block number")
 		}
 
+		if bn == 0 {
+			return errors.Errorf("Failed to get max block number from scan, 0 returned by timestamp %v", hourTimestamp)
+		}
+
+		maxBlockNumber = bn
+
 		return nil
 	})
+	result.MaxBlockNumber = maxBlockNumber
 
 	if err := group.Wait(); err != nil {
 		return HourlyData{}, false, errors.WithMessage(err, "Any async worker failed")
