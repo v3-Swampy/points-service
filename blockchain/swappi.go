@@ -89,6 +89,8 @@ func (swappi *Swappi) GetPairInfo(pair common.Address) (PairInfo, error) {
 // GetTokenPrice calculates the price of given baseToken and quoteToken.
 //
 // It returns ErrSwappiPairNotFound if pair not found in given factory.
+//
+// Note, it returns 0 if any token reserve is 0.
 func (swappi *Swappi) GetTokenPrice(opts *bind.CallOpts, baseToken, quoteToken common.Address) (decimal.Decimal, error) {
 	// get pair from factory
 	factoryCaller, err := contract.NewSwappiFactoryCaller(swappi.addresses.Factory, swappi.caller)
@@ -124,6 +126,10 @@ func (swappi *Swappi) GetTokenPrice(opts *bind.CallOpts, baseToken, quoteToken c
 	reserve0 := decimal.NewFromBigInt(reserves.Reserve0, -int32(info.Token0.Decimals))
 	reserve1 := decimal.NewFromBigInt(reserves.Reserve1, -int32(info.Token1.Decimals))
 
+	if reserve0.IsZero() || reserve1.IsZero() {
+		return decimal.Zero, nil
+	}
+
 	if info.Token0.Address == baseToken {
 		return reserve1.Div(reserve0), nil
 	}
@@ -134,6 +140,8 @@ func (swappi *Swappi) GetTokenPrice(opts *bind.CallOpts, baseToken, quoteToken c
 // GetTokenPriceRouted calculates the price of given routes.
 //
 // It returns ErrSwappiPairNotFound if any pair not found in the routes or the number of given routes is less than 2.
+//
+// Note, it returns 0 if any token reserve is 0.
 func (swappi *Swappi) GetTokenPriceRouted(opts *bind.CallOpts, routes ...common.Address) (decimal.Decimal, error) {
 	numTokens := len(routes)
 	if numTokens < 2 {
@@ -148,6 +156,10 @@ func (swappi *Swappi) GetTokenPriceRouted(opts *bind.CallOpts, routes ...common.
 			return decimal.Zero, errors.WithMessagef(err, "Failed to get mid price, i = %v", i)
 		}
 
+		if midPrice.IsZero() {
+			return decimal.Zero, nil
+		}
+
 		price = price.Mul(midPrice)
 	}
 
@@ -157,6 +169,8 @@ func (swappi *Swappi) GetTokenPriceRouted(opts *bind.CallOpts, routes ...common.
 // GetTokenPriceAuto calculates the price of give token via token/WCFX/USDT or token/USDT.
 //
 // It returns ErrSwappiPairNotFound if relevant pair not found.
+//
+// Note, it returns 0 if any token reserve is 0.
 func (swappi *Swappi) GetTokenPriceAuto(opts *bind.CallOpts, token common.Address) (decimal.Decimal, error) {
 	if token == swappi.addresses.USDT {
 		return decimal.NewFromInt(1), nil
@@ -192,17 +206,6 @@ func (swappi *Swappi) GetPairTVL(opts *bind.CallOpts, pair common.Address) (deci
 		return decimal.Zero, errors.WithMessage(err, "Failed to get pair info")
 	}
 
-	// get prices
-	price0, err := swappi.GetTokenPriceAuto(opts, info.Token0.Address)
-	if err != nil {
-		return decimal.Zero, errors.WithMessage(err, "Failed to get price of token0")
-	}
-
-	price1, err := swappi.GetTokenPriceAuto(opts, info.Token1.Address)
-	if err != nil {
-		return decimal.Zero, errors.WithMessage(err, "Failed to get price of token1")
-	}
-
 	// get reserves from pair
 	pairCaller, err := contract.NewSwappiPairCaller(pair, swappi.caller)
 	if err != nil {
@@ -214,8 +217,26 @@ func (swappi *Swappi) GetPairTVL(opts *bind.CallOpts, pair common.Address) (deci
 		return decimal.Zero, errors.WithMessage(err, "Failed to get reserves from pair")
 	}
 
-	value0 := decimal.NewFromBigInt(reserves.Reserve0, -int32(info.Token0.Decimals)).Mul(price0)
-	value1 := decimal.NewFromBigInt(reserves.Reserve1, -int32(info.Token1.Decimals)).Mul(price1)
+	if reserves.Reserve0.Sign() == 0 || reserves.Reserve1.Sign() == 0 {
+		return decimal.Zero, nil
+	}
 
-	return value0.Add(value1), nil
+	reserve0 := decimal.NewFromBigInt(reserves.Reserve0, -int32(info.Token0.Decimals))
+	reserve1 := decimal.NewFromBigInt(reserves.Reserve1, -int32(info.Token1.Decimals))
+
+	// get prices
+	price0, err := swappi.GetTokenPriceAuto(opts, info.Token0.Address)
+	if err != nil {
+		return decimal.Zero, errors.WithMessage(err, "Failed to get price of token0")
+	}
+
+	price1, err := swappi.GetTokenPriceAuto(opts, info.Token1.Address)
+	if err != nil {
+		return decimal.Zero, errors.WithMessage(err, "Failed to get price of token1")
+	}
+
+	tvl0 := reserve0.Mul(price0)
+	tvl1 := reserve1.Mul(price1)
+
+	return tvl0.Add(tvl1), nil
 }
