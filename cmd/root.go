@@ -65,17 +65,13 @@ func start(*cobra.Command, []string) {
 		pools = append(pools, common.HexToAddress(v))
 	}
 
-	var nextHourTimestamp int64
 	lastStatTimestamp, err := services.Config.GetLastStatPointsTime()
 	cmd.FatalIfErr(err, "Failed to get last stat points time")
-	if lastStatTimestamp > 0 {
-		nextHourTimestamp = lastStatTimestamp + 3600
-	}
 
 	// init poller/emitter/batcher
 	var pollConfig parsing.PollConfig
 	viper.MustUnmarshalKey("sync.poller", &pollConfig)
-	poller, err := parsing.NewPoller(pollConfig, nextHourTimestamp, pools...)
+	poller, err := parsing.NewPoller(pollConfig, lastStatTimestamp, pools...)
 	cmd.FatalIfErr(err, "Failed to create poller")
 	defer poller.Close()
 	wg.Add(1)

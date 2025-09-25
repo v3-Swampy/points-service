@@ -43,7 +43,7 @@ func (emitter *Emitter) Ch() <-chan sync.BatchEvent {
 	return emitter.buf
 }
 
-func (emitter *Emitter) Run(ctx context.Context, wg *stdSync.WaitGroup, dataCh <-chan HourlyData) {
+func (emitter *Emitter) Run(ctx context.Context, wg *stdSync.WaitGroup, dataCh <-chan Snapshot) {
 	defer wg.Done()
 
 	for {
@@ -56,9 +56,9 @@ func (emitter *Emitter) Run(ctx context.Context, wg *stdSync.WaitGroup, dataCh <
 	}
 }
 
-func (emitter *Emitter) mustEmit(ctx context.Context, data HourlyData) {
+func (emitter *Emitter) mustEmit(ctx context.Context, data Snapshot) {
 	logger := emitter.logger.WithFields(logrus.Fields{
-		"ts":    formatTs(data.HourTimestamp),
+		"ts":    formatTs(data.Timestamp),
 		"minBN": data.MinBlockNumber,
 		"maxBN": data.MaxBlockNumber,
 	})
@@ -88,8 +88,8 @@ func (emitter *Emitter) mustEmit(ctx context.Context, data HourlyData) {
 	}
 }
 
-func (emitter *Emitter) emit(ctx context.Context, data HourlyData) (sync.BatchEvent, error) {
-	logger := emitter.logger.WithField("ts", formatTs(data.HourTimestamp))
+func (emitter *Emitter) emit(ctx context.Context, data Snapshot) (sync.BatchEvent, error) {
+	logger := emitter.logger.WithField("ts", formatTs(data.Timestamp))
 
 	event := sync.BatchEvent{
 		TimeInfo: data.TimeInfo,
@@ -142,7 +142,7 @@ func (emitter *Emitter) emit(ctx context.Context, data HourlyData) (sync.BatchEv
 		for _, v := range pool.Trades {
 			event.Trades = append(event.Trades, sync.TradeEvent{
 				PoolEvent: sync.PoolEvent{
-					Timestamp: data.HourTimestamp,
+					Timestamp: data.Timestamp,
 					User:      v.UserAddress,
 					Pool:      info,
 				},
@@ -155,7 +155,7 @@ func (emitter *Emitter) emit(ctx context.Context, data HourlyData) (sync.BatchEv
 		for _, v := range pool.Liquidities {
 			event.Liquidities = append(event.Liquidities, sync.LiquidityEvent{
 				PoolEvent: sync.PoolEvent{
-					Timestamp: data.HourTimestamp,
+					Timestamp: data.Timestamp,
 					User:      v.UserAddress,
 					Pool:      info,
 				},

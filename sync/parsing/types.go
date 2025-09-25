@@ -29,7 +29,7 @@ type PoolData struct {
 	Liquidities []LiquidityData
 }
 
-type HourlyData struct {
+type Snapshot struct {
 	sync.TimeInfo
 
 	Pools []PoolData

@@ -45,7 +45,7 @@ func (service *StatService) OnEventBatch(event sync.BatchEvent) error {
 		return err
 	}
 
-	if err := service.aggregateLiquidity(event.Liquidities, users, pools); err != nil {
+	if err := service.aggregateLiquidity(event.TimeInfo, event.Liquidities, users, pools); err != nil {
 		return err
 	}
 
@@ -53,7 +53,7 @@ func (service *StatService) OnEventBatch(event sync.BatchEvent) error {
 		return err
 	}
 
-	return service.Store(event.HourTimestamp, users, pools)
+	return service.Store(event.Timestamp, users, pools)
 }
 
 func (service *StatService) aggregateTrade(event []sync.TradeEvent, users map[string]*model.User,
@@ -87,7 +87,7 @@ func (service *StatService) aggregateTrade(event []sync.TradeEvent, users map[st
 	return nil
 }
 
-func (service *StatService) aggregateLiquidity(event []sync.LiquidityEvent, users map[string]*model.User,
+func (service *StatService) aggregateLiquidity(timeInfo sync.TimeInfo, event []sync.LiquidityEvent, users map[string]*model.User,
 	pools map[string]*model.Pool) error {
 	for _, liquidity := range event {
 		statTime := time.Unix(liquidity.Timestamp, 0)
@@ -98,7 +98,7 @@ func (service *StatService) aggregateLiquidity(event []sync.LiquidityEvent, user
 		if err != nil {
 			return err
 		}
-		liquidityPoints := liquidity.Value0Secs.Add(liquidity.Value1Secs).Div(decimal.NewFromInt(3600)).
+		liquidityPoints := liquidity.Value0Secs.Add(liquidity.Value1Secs).Div(decimal.NewFromInt(timeInfo.IntervalSecs)).
 			Mul(decimal.NewFromFloat(0.1)).Mul(decimal.NewFromInt(int64(weight.LiquidityWeight)))
 
 		if u, exists := users[user]; exists {

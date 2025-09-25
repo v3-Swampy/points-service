@@ -52,11 +52,11 @@ func (batcher *Batcher) Run(ctx context.Context, wg *stdSync.WaitGroup, eventCh 
 	}
 }
 func (batcher *Batcher) mustHandle(ctx context.Context, batch sync.BatchEvent) sync.BatchEvent {
-	if batch.HourTimestamp == 0 {
+	if batch.Timestamp == 0 {
 		return sync.BatchEvent{}
 	}
 
-	logger := batcher.logger.WithField("ts", formatTs(batch.HourTimestamp))
+	logger := batcher.logger.WithField("ts", formatTs(batch.Timestamp))
 
 	for {
 		start := time.Now()

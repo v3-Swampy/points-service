@@ -26,7 +26,8 @@ type LiquidityEvent struct {
 }
 
 type TimeInfo struct {
-	HourTimestamp  int64
+	Timestamp      int64
+	IntervalSecs   int64
 	MinBlockNumber uint64
 	MaxBlockNumber uint64
 }
