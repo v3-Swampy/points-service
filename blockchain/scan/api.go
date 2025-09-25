@@ -4,12 +4,23 @@ import (
 	"fmt"
 
 	"github.com/go-resty/resty/v2"
+	"github.com/pkg/errors"
 )
 
 type Response[T any] struct {
 	Status  string
 	Message string
 	Result  T
+}
+
+func (resp *Response[T]) GetResult() (v T, err error) {
+	if resp.Status != "1" {
+		err = errors.Errorf("Error(%v): %v", resp.Status, resp.Message)
+	} else {
+		v = resp.Result
+	}
+
+	return
 }
 
 type Api struct {
@@ -38,5 +49,5 @@ func (api *Api) GetBlockNumberByTime(timestampSecs int64, after bool) (uint64, e
 		return 0, err
 	}
 
-	return resp.Result, nil
+	return resp.GetResult()
 }
