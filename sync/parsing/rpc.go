@@ -2,7 +2,6 @@ package parsing
 
 import (
 	"context"
-	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/openweb3/go-rpc-provider/interfaces"
@@ -14,12 +13,8 @@ type Client struct {
 	interfaces.Provider
 }
 
-func NewClient(url string) (*Client, error) {
-	option := providers.Option{
-		RequestTimeout: 5 * time.Second,
-	}
-
-	provider, err := providers.NewProviderWithOption(url, option)
+func NewClient(url string, option ...providers.Option) (*Client, error) {
+	provider, err := providers.NewProviderWithOption(url, optionWithDefault(option...))
 	if err != nil {
 		return nil, errors.WithMessagef(err, "Failed to dial %v", url)
 	}

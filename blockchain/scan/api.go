@@ -2,10 +2,17 @@ package scan
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/go-resty/resty/v2"
+	"github.com/mcuadros/go-defaults"
 	"github.com/pkg/errors"
 )
+
+type Option struct {
+	DebugEnabled   bool
+	RequestTimeout time.Duration `default:"3s"`
+}
 
 type Response[T any] struct {
 	Status  string
@@ -27,13 +34,21 @@ func (resp *Response[T]) GetResult() (v T, err error) {
 
 type Api struct {
 	client *resty.Client
-	url    string
 }
 
-func NewApi(url string) *Api {
+func NewApi(url string, option ...Option) *Api {
+	var opt Option
+	if len(option) > 0 {
+		opt = option[0]
+	}
+
+	defaults.SetDefaults(&opt)
+
 	return &Api{
-		client: resty.New(),
-		url:    url,
+		client: resty.New().
+			SetBaseURL(url).
+			SetDebug(opt.DebugEnabled).
+			SetTimeout(opt.RequestTimeout),
 	}
 }
 
@@ -43,7 +58,7 @@ func (api *Api) GetBlockNumberByTime(timestampSecs int64, after bool) (uint64, e
 		closest = "after"
 	}
 
-	url := fmt.Sprintf("%v/api?module=block&action=getblocknobytime&timestamp=%v&closest=%v", api.url, timestampSecs, closest)
+	url := fmt.Sprintf("/api?module=block&action=getblocknobytime&timestamp=%v&closest=%v", timestampSecs, closest)
 
 	var resp Response[uint64]
 

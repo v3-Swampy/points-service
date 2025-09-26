@@ -42,7 +42,10 @@ func start(*cobra.Command, []string) {
 	// init blockchain
 	var blockchainConfig blockchain.Config
 	viper.MustUnmarshalKey("blockchain", &blockchainConfig)
-	client, err := web3go.NewClient(blockchainConfig.URL)
+	clientOption := web3go.ClientOption{
+		Option: blockchainConfig.Option,
+	}
+	client, err := web3go.NewClientWithOption(blockchainConfig.URL, clientOption)
 	cmd.FatalIfErr(err, "Failed to create blockchain client")
 	defer client.Close()
 
@@ -69,20 +72,27 @@ func start(*cobra.Command, []string) {
 	cmd.FatalIfErr(err, "Failed to get last stat points time")
 
 	// init poller/emitter/batcher
-	var pollConfig parsing.PollConfig
-	viper.MustUnmarshalKey("sync.poller", &pollConfig)
-	poller, err := parsing.NewPoller(pollConfig, lastStatTimestamp, pools...)
+	var syncConfig parsing.Config
+	viper.MustUnmarshalKey("sync", &syncConfig)
+
+	poller, err := parsing.NewPoller(
+		syncConfig.Poller.RpcUrl,
+		syncConfig.Poller.ScanUrl,
+		lastStatTimestamp,
+		pools,
+		syncConfig.Poller.Option,
+	)
 	cmd.FatalIfErr(err, "Failed to create poller")
 	defer poller.Close()
 	wg.Add(1)
 	go poller.Run(ctx, &wg)
 
-	emitter := parsing.NewEmitter(vswap, swappi)
+	emitter := parsing.NewEmitter(vswap, swappi, syncConfig.Emitter)
 	defer emitter.Close()
 	wg.Add(1)
 	go emitter.Run(ctx, &wg, poller.Ch())
 
-	batcher := parsing.NewBatcher(services.Stat)
+	batcher := parsing.NewBatcher(services.Stat, syncConfig.Batcher)
 	wg.Add(1)
 	go batcher.Run(ctx, &wg, emitter.Ch())
 

@@ -3,7 +3,10 @@
 
 # Blockchain Configurations
 blockchain:
-  url: <blockchain_RPC_endpoint>
+  url: <blockchain_RPC_url>
+  option:
+    # overwrite the default 30s
+    requestTimeout: 3s
   swappi:
     factory: <factory_address>
     usdt: <usdt_address>
@@ -14,5 +17,9 @@ blockchain:
 # Sync Configurations
 sync:
   poller:
-    endpoint: <contract_parser_RPC_endpoint>
-    scan: <scan_open_api_endpoint>
+    rpcUrl: <contract_parser_RPC_url>
+    scanUrl: <scan_open_api_url>
+    option:
+      rpc:
+        # overwrite the default 30s
+        requestTimeout: 3s
