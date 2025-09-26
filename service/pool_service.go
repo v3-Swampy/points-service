@@ -74,7 +74,7 @@ func (service *PoolService) List(request model.PoolPagingRequest) (total int64, 
 	} else {
 		sortField = fmt.Sprintf("%s_weight", request.SortField)
 		db = service.store.DB.Model(&model.PoolParams{}).
-			Select("pool_params.*, pools.token0, pools.token1, pools.token0_symbol, pools.token1_symbol, pools.tvl").
+			Select("pool_params.*, pools.token0, pools.token1, pools.token0_symbol, pools.token1_symbol, pools.fee, pools.tvl").
 			Joins("INNER JOIN pools ON pool_params.address = pools.address")
 	}
 

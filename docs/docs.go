@@ -259,6 +259,9 @@ const docTemplate = `{
                 "address": {
                     "type": "string"
                 },
+                "fee": {
+                    "type": "integer"
+                },
                 "liquidityWeight": {
                     "type": "integer"
                 },

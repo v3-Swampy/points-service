@@ -39,6 +39,7 @@ type Pool struct {
 	Address         string          `gorm:"size:64;not null;unique" json:"address"`
 	Token0          string          `gorm:"size:64;not null" json:"token0"`
 	Token1          string          `gorm:"size:64;not null" json:"token1"`
+	Fee             uint32          `gorm:"not null" json:"fee"`
 	Tvl             decimal.Decimal `gorm:"type:decimal(20,0);not null;default:0;index" json:"tvl"`
 	TradePoints     decimal.Decimal `gorm:"type:decimal(20,0);not null;default:0" json:"tradePoints"`
 	LiquidityPoints decimal.Decimal `gorm:"type:decimal(21,1);not null;default:0" json:"liquidityPoints"`
@@ -51,12 +52,12 @@ type Pool struct {
 	Token1Decimals uint8  `gorm:"" json:"token1Decimals"`
 }
 
-// TODO handle pool fee
 func NewPool(pool blockchain.PoolInfo, tradePoints decimal.Decimal, liquidityPoints decimal.Decimal, time time.Time) *Pool {
 	return &Pool{
 		Address:         pool.Address.String(),
 		Token0:          pool.Token0.Address.String(),
 		Token1:          pool.Token1.Address.String(),
+		Fee:             pool.Fee,
 		Tvl:             decimal.Zero,
 		TradePoints:     tradePoints,
 		LiquidityPoints: liquidityPoints,

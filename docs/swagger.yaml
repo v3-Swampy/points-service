@@ -36,6 +36,8 @@ definitions:
     properties:
       address:
         type: string
+      fee:
+        type: integer
       liquidityWeight:
         type: integer
       token0:

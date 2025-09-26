@@ -55,5 +55,6 @@ type PoolParamInfo struct {
 
 type PoolInfo struct {
 	PoolParamInfo
+	Fee uint32          `json:"fee"`
 	Tvl decimal.Decimal `json:"tvl"`
 }

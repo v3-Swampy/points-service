@@ -101,6 +101,7 @@ func (controller *Controller) listPools(c *gin.Context) (any, error) {
 				TradeWeight:     p.TradeWeight,
 				LiquidityWeight: p.LiquidityWeight,
 			},
+			Fee: p.Fee,
 			Tvl: p.Tvl,
 		}
 		pools = append(pools, pool)
