@@ -39,7 +39,7 @@ type Pool struct {
 	Address         string          `gorm:"size:64;not null;unique" json:"address"`
 	Token0          string          `gorm:"size:64;not null" json:"token0"`
 	Token1          string          `gorm:"size:64;not null" json:"token1"`
-	Fee             uint32          `gorm:"not null;default:0;index" json:"fee"`
+	Fee             uint32          `gorm:"not null;index" json:"fee"`
 	Tvl             decimal.Decimal `gorm:"type:decimal(20,0);not null;default:0;index" json:"tvl"`
 	TradePoints     decimal.Decimal `gorm:"type:decimal(20,0);not null;default:0" json:"tradePoints"`
 	LiquidityPoints decimal.Decimal `gorm:"type:decimal(21,1);not null;default:0" json:"liquidityPoints"`
