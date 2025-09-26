@@ -36,6 +36,7 @@ func NewVswap(swappi *Swappi, wcfxUsdtPool common.Address) *Vswap {
 	}
 }
 
+// GetPoolInfo retrieves pool info from blockchain or returns the cached value.
 func (vswap *Vswap) GetPoolInfo(pool common.Address) (PoolInfo, error) {
 	return vswap.getOrQueryFunc(pool, vswap.GetPoolInfoForce)
 }
