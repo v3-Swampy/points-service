@@ -16,7 +16,7 @@ import (
 	"github.com/v3-Swampy/points-service/sync"
 )
 
-var DefaultPriceSamples = uint64(4)
+var DefaultPriceSampleBlocks = uint64(1200) // about 10 minutes for a sample
 
 // Emitter is used to generate event based on polled data from contract parser.
 type Emitter struct {
@@ -179,24 +179,11 @@ func (emitter *Emitter) getPrice(minBlockNumber, maxBlockNumber uint64, pool, to
 		return price, true, nil
 	}
 
-	if minBlockNumber > maxBlockNumber {
-		emitter.logger.WithFields(logrus.Fields{
-			"min": minBlockNumber,
-			"max": maxBlockNumber,
-		}).Error("Invalid block number range")
-	}
-
-	// sample n prices
-	step := (maxBlockNumber + 1 - minBlockNumber) / DefaultPriceSamples
-	if step == 0 {
-		step = 1
-	}
-
 	sumPrices := decimal.Zero
 	var count int64
 
 	// ensure the maxBlockNumber sampled in case that liquidity added at maxBlockNumber
-	for bn := maxBlockNumber; bn >= minBlockNumber && bn <= maxBlockNumber; bn -= step {
+	for bn := maxBlockNumber; bn >= minBlockNumber && bn <= maxBlockNumber; bn -= DefaultPriceSampleBlocks {
 		opts := bind.CallOpts{
 			BlockNumber: new(big.Int).SetUint64(bn),
 		}
@@ -206,6 +193,7 @@ func (emitter *Emitter) getPrice(minBlockNumber, maxBlockNumber uint64, pool, to
 			return decimal.Zero, false, errors.WithMessagef(err, "Failed to sample token price at block %v", bn)
 		}
 
+		// no liquidity yet
 		if price.IsZero() {
 			break
 		}

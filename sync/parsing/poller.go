@@ -229,7 +229,7 @@ func (poller *Poller) poll(ctx context.Context, timestamp int64, lastMaxBlockNum
 		result.Pools = append(result.Pools, data)
 	}
 
-	if result.MinBlockNumber == 0 || result.MaxBlockNumber == 0 {
+	if result.MinBlockNumber == 0 || result.MaxBlockNumber == 0 || result.MinBlockNumber > result.MaxBlockNumber {
 		poller.logger.WithFields(logrus.Fields{
 			"min": result.MinBlockNumber,
 			"max": result.MaxBlockNumber,
