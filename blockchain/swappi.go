@@ -2,7 +2,6 @@ package blockchain
 
 import (
 	"fmt"
-	"sync"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -30,10 +29,11 @@ type SwappiAddresses struct {
 }
 
 type Swappi struct {
+	cacheable[common.Address, PairInfo]
+
 	caller    bind.ContractCaller
 	erc20     *ERC20
 	addresses SwappiAddresses
-	cache     sync.Map
 }
 
 func NewSwappi(caller bind.ContractCaller, erc20 *ERC20, addresses SwappiAddresses) *Swappi {
@@ -46,11 +46,10 @@ func NewSwappi(caller bind.ContractCaller, erc20 *ERC20, addresses SwappiAddress
 
 // GetPairInfo retrieves pair token info from blockchain or returns the cached value.
 func (swappi *Swappi) GetPairInfo(pair common.Address) (PairInfo, error) {
-	// check cache at first
-	if val, ok := swappi.cache.Load(pair); ok {
-		return val.(PairInfo), nil
-	}
+	return swappi.getOrQueryFunc(pair, swappi.GetPairInfoForce)
+}
 
+func (swappi *Swappi) GetPairInfoForce(pair common.Address) (PairInfo, error) {
 	info := PairInfo{
 		Address: pair,
 	}
@@ -79,9 +78,6 @@ func (swappi *Swappi) GetPairInfo(pair common.Address) (PairInfo, error) {
 	if info.Token1, err = swappi.erc20.GetTokenInfo(token1); err != nil {
 		return PairInfo{}, errors.WithMessage(err, "Failed to query token1 info")
 	}
-
-	// cache value
-	swappi.cache.Store(pair, info)
 
 	return info, nil
 }
