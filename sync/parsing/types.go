@@ -32,7 +32,5 @@ type PoolData struct {
 type Snapshot struct {
 	sync.TimeInfo
 
-	IntervalSecs int64
-
 	Pools []PoolData
 }

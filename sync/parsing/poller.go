@@ -145,7 +145,6 @@ func (poller *Poller) poll(timestamp int64, lastMaxBlockNumber uint64) (Snapshot
 	// poll data in async
 	var result Snapshot
 	result.Timestamp = timestamp
-	result.IntervalSecs = poller.intervalSecs
 
 	group := new(errgroup.Group)
 
