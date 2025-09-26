@@ -16,19 +16,27 @@ import (
 	"github.com/v3-Swampy/points-service/sync"
 )
 
-var DefaultPriceSampleBlocks = uint64(1200) // about 10 minutes for a sample
+type EmitOption struct {
+	BufferSize        int           `default:"1024"`
+	IntervalError     time.Duration `default:"5s"`
+	PriceSampleBlocks uint64        `default:"1200"` // about 10 minutes
+}
 
 // Emitter is used to generate event based on polled data from contract parser.
 type Emitter struct {
+	option EmitOption
 	buf    chan sync.BatchEvent
 	vswap  *blockchain.Vswap
 	swappi *blockchain.Swappi
 	logger *logrus.Entry
 }
 
-func NewEmitter(vswap *blockchain.Vswap, swappi *blockchain.Swappi) *Emitter {
+func NewEmitter(vswap *blockchain.Vswap, swappi *blockchain.Swappi, option ...EmitOption) *Emitter {
+	opt := optionWithDefault(option...)
+
 	return &Emitter{
-		buf:    make(chan sync.BatchEvent, DefaultBufSize),
+		option: opt,
+		buf:    make(chan sync.BatchEvent, opt.BufferSize),
 		vswap:  vswap,
 		swappi: swappi,
 		logger: logrus.WithField("worker", "sync.emitter"),
@@ -73,7 +81,7 @@ func (emitter *Emitter) mustEmit(ctx context.Context, data Snapshot) {
 			select {
 			case <-ctx.Done():
 				return
-			case <-time.After(DefaultIntervalError):
+			case <-time.After(emitter.option.IntervalError):
 				logger.Debug("Emitter retry to emit event")
 			}
 		} else {
@@ -183,7 +191,7 @@ func (emitter *Emitter) getPrice(minBlockNumber, maxBlockNumber uint64, pool, to
 	var count int64
 
 	// ensure the maxBlockNumber sampled in case that liquidity added at maxBlockNumber
-	for bn := maxBlockNumber; bn >= minBlockNumber && bn <= maxBlockNumber; bn -= DefaultPriceSampleBlocks {
+	for bn := maxBlockNumber; bn >= minBlockNumber && bn <= maxBlockNumber; bn -= emitter.option.PriceSampleBlocks {
 		opts := bind.CallOpts{
 			BlockNumber: new(big.Int).SetUint64(bn),
 		}

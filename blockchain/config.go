@@ -1,9 +1,14 @@
 package blockchain
 
-import "github.com/ethereum/go-ethereum/common"
+import (
+	"github.com/ethereum/go-ethereum/common"
+	providers "github.com/openweb3/go-rpc-provider/provider_wrapper"
+)
 
 type Config struct {
 	URL    string
+	Option providers.Option
+
 	Swappi SwappiConfig
 	Vswap  VswapConfig
 }

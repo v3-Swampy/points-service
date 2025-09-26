@@ -9,18 +9,21 @@ import (
 	"github.com/v3-Swampy/points-service/sync"
 )
 
-const (
-	DefaultEventBatchSize    = 100
-	DefaultEventBatchTimeout = time.Second * 10
-)
+type BatchOption struct {
+	BatchSize     int           `default:"100"`
+	BatchTimeout  time.Duration `default:"3s"`
+	IntervalError time.Duration `default:"5s"`
+}
 
 type Batcher struct {
+	option  BatchOption
 	handler sync.EventHandler
 	logger  *logrus.Entry
 }
 
-func NewBatcher(handler sync.EventHandler) *Batcher {
+func NewBatcher(handler sync.EventHandler, option ...BatchOption) *Batcher {
 	return &Batcher{
+		option:  optionWithDefault(option...),
 		handler: handler,
 		logger:  logrus.WithField("worker", "sync.batcher"),
 	}
@@ -31,7 +34,7 @@ func (batcher *Batcher) Run(ctx context.Context, wg *stdSync.WaitGroup, eventCh 
 
 	var batch sync.BatchEvent
 
-	ticker := time.NewTicker(DefaultEventBatchTimeout)
+	ticker := time.NewTicker(batcher.option.BatchTimeout)
 	defer ticker.Stop()
 
 	for {
@@ -40,13 +43,13 @@ func (batcher *Batcher) Run(ctx context.Context, wg *stdSync.WaitGroup, eventCh 
 			return
 		case <-ticker.C:
 			batch = batcher.mustHandle(ctx, batch)
-			ticker.Reset(DefaultEventBatchTimeout)
+			ticker.Reset(batcher.option.BatchTimeout)
 		case event := <-eventCh:
 			batch.Merge(event)
 
-			if len(batch.Trades)+len(batch.Liquidities) >= DefaultEventBatchSize {
+			if len(batch.Trades)+len(batch.Liquidities) >= batcher.option.BatchSize {
 				batch = batcher.mustHandle(ctx, batch)
-				ticker.Reset(DefaultEventBatchTimeout)
+				ticker.Reset(batcher.option.BatchTimeout)
 			}
 		}
 	}
@@ -67,7 +70,7 @@ func (batcher *Batcher) mustHandle(ctx context.Context, batch sync.BatchEvent) s
 			select {
 			case <-ctx.Done():
 				return sync.BatchEvent{}
-			case <-time.After(DefaultIntervalError):
+			case <-time.After(batcher.option.IntervalError):
 				logger.Debug("Batcher retry to handle events")
 			}
 		} else {
