@@ -1,10 +1,13 @@
 package blockchain
 
 import (
+	"fmt"
+
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
 	"github.com/shopspring/decimal"
+	"github.com/v3-Swampy/points-service/blockchain/contract"
 )
 
 var ErrVswapPoolNotFound = errors.New("vSwap pool not found to calculate price")
@@ -15,24 +18,51 @@ type PoolInfo struct {
 	Fee uint32
 }
 
-type Vswap struct {
-	swappi *Swappi
+func (info PoolInfo) String() string {
+	return fmt.Sprintf("%v/%v/%v", info.Token0.Symbol, info.Token1.Symbol, info.Fee)
+}
 
+type Vswap struct {
+	cacheable[common.Address, PoolInfo]
+
+	swappi       *Swappi
 	wcfxUsdtPool common.Address
 }
 
 func NewVswap(swappi *Swappi, wcfxUsdtPool common.Address) *Vswap {
-	return &Vswap{swappi, wcfxUsdtPool}
+	return &Vswap{
+		swappi:       swappi,
+		wcfxUsdtPool: wcfxUsdtPool,
+	}
 }
 
+// GetPoolInfo retrieves pool info from blockchain or returns the cached value.
 func (vswap *Vswap) GetPoolInfo(pool common.Address) (PoolInfo, error) {
-	pairInfo, err := vswap.swappi.GetPairInfo(pool)
+	return vswap.getOrQueryFunc(pool, vswap.GetPoolInfoForce)
+}
+
+func (vswap *Vswap) GetPoolInfoForce(pool common.Address) (PoolInfo, error) {
+	pairInfo, err := vswap.swappi.GetPairInfoForce(pool)
 	if err != nil {
 		return PoolInfo{}, err
 	}
 
-	// TODO retrieve fee on blockchain
-	return PoolInfo{pairInfo, 3000}, nil
+	poolCaller, err := contract.NewUniswapV3PoolCaller(pool, vswap.swappi.caller)
+	if err != nil {
+		return PoolInfo{}, errors.WithMessage(err, "Failed to create Pool caller")
+	}
+
+	fee, err := poolCaller.Fee(nil)
+	if err != nil {
+		return PoolInfo{}, errors.WithMessage(err, "Failed to query pool fee")
+	}
+
+	info := PoolInfo{
+		PairInfo: pairInfo,
+		Fee:      uint32(fee.Uint64()),
+	}
+
+	return info, nil
 }
 
 // GetTokenPrice calculates the price of given token in pool.

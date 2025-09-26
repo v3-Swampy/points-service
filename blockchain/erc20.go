@@ -1,8 +1,6 @@
 package blockchain
 
 import (
-	"sync"
-
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
@@ -18,8 +16,9 @@ type TokenInfo struct {
 }
 
 type ERC20 struct {
+	cacheable[common.Address, TokenInfo]
+
 	caller bind.ContractCaller
-	cache  sync.Map
 }
 
 func NewERC20(caller bind.ContractCaller) *ERC20 {
@@ -30,11 +29,10 @@ func NewERC20(caller bind.ContractCaller) *ERC20 {
 
 // GetTokenInfo retrieves ERC20 token info from blockchain or returns the cached value.
 func (erc20 *ERC20) GetTokenInfo(token common.Address) (TokenInfo, error) {
-	// check cache at first
-	if val, ok := erc20.cache.Load(token); ok {
-		return val.(TokenInfo), nil
-	}
+	return erc20.getOrQueryFunc(token, erc20.GetTokenInfoForce)
+}
 
+func (erc20 *ERC20) GetTokenInfoForce(token common.Address) (TokenInfo, error) {
 	caller, err := contract.NewERC20Caller(token, erc20.caller)
 	if err != nil {
 		return TokenInfo{}, errors.WithMessage(err, "Failed to create ERC20 caller")
@@ -56,9 +54,6 @@ func (erc20 *ERC20) GetTokenInfo(token common.Address) (TokenInfo, error) {
 	if info.Decimals, err = caller.Decimals(nil); err != nil {
 		return TokenInfo{}, errors.WithMessage(err, "Failed to query token decimals")
 	}
-
-	// cache value
-	erc20.cache.Store(token, info)
 
 	return info, nil
 }
