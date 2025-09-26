@@ -104,7 +104,6 @@ func (emitter *Emitter) emit(ctx context.Context, data Snapshot) (sync.BatchEven
 	}
 
 	priceCache := make(map[common.Address]decimal.Decimal)
-	interval := decimal.NewFromInt(data.IntervalSecs)
 
 	for i, pool := range data.Pools {
 		// check cancellation
@@ -168,8 +167,8 @@ func (emitter *Emitter) emit(ctx context.Context, data Snapshot) (sync.BatchEven
 					User:      v.UserAddress,
 					Pool:      info,
 				},
-				Value0: decimal.NewFromBigInt(v.Token0LiquiditySeconds.ToInt(), -int32(info.Token0.Decimals)).Mul(price0).Div(interval),
-				Value1: decimal.NewFromBigInt(v.Token1LiquiditySeconds.ToInt(), -int32(info.Token1.Decimals)).Mul(price1).Div(interval),
+				Value0Seconds: decimal.NewFromBigInt(v.Token0LiquiditySeconds.ToInt(), -int32(info.Token0.Decimals)).Mul(price0),
+				Value1Seconds: decimal.NewFromBigInt(v.Token1LiquiditySeconds.ToInt(), -int32(info.Token1.Decimals)).Mul(price1),
 			})
 		}
 	}

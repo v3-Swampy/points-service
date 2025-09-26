@@ -15,6 +15,8 @@ import (
 	"gorm.io/gorm"
 )
 
+var pointsPerValueSecond = decimal.NewFromFloat(0.1 / 3600)
+
 type StatService struct {
 	store *store.Store
 
@@ -98,8 +100,8 @@ func (service *StatService) aggregateLiquidity(event []sync.LiquidityEvent, user
 		if err != nil {
 			return err
 		}
-		liquidityPoints := liquidity.Value0.Add(liquidity.Value1).
-			Mul(decimal.NewFromFloat(0.1)).Mul(decimal.NewFromInt(int64(weight.LiquidityWeight)))
+		liquidityPoints := liquidity.Value0Seconds.Add(liquidity.Value1Seconds).
+			Mul(pointsPerValueSecond).Mul(decimal.NewFromInt(int64(weight.LiquidityWeight)))
 
 		if u, exists := users[user]; exists {
 			u.LiquidityPoints = u.LiquidityPoints.Add(liquidityPoints)
