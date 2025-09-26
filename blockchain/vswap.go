@@ -9,6 +9,12 @@ import (
 
 var ErrVswapPoolNotFound = errors.New("vSwap pool not found to calculate price")
 
+type PoolInfo struct {
+	PairInfo
+
+	Fee uint32
+}
+
 type Vswap struct {
 	swappi *Swappi
 
@@ -19,8 +25,14 @@ func NewVswap(swappi *Swappi, wcfxUsdtPool common.Address) *Vswap {
 	return &Vswap{swappi, wcfxUsdtPool}
 }
 
-func (vswap *Vswap) GetPoolInfo(pool common.Address) (PairInfo, error) {
-	return vswap.swappi.GetPairInfo(pool)
+func (vswap *Vswap) GetPoolInfo(pool common.Address) (PoolInfo, error) {
+	pairInfo, err := vswap.swappi.GetPairInfo(pool)
+	if err != nil {
+		return PoolInfo{}, err
+	}
+
+	// TODO retrieve fee on blockchain
+	return PoolInfo{pairInfo, 3000}, nil
 }
 
 // GetTokenPrice calculates the price of given token in pool.

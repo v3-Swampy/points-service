@@ -51,7 +51,8 @@ type Pool struct {
 	Token1Decimals uint8  `gorm:"" json:"token1Decimals"`
 }
 
-func NewPool(pool blockchain.PairInfo, tradePoints decimal.Decimal, liquidityPoints decimal.Decimal, time time.Time) *Pool {
+// TODO handle pool fee
+func NewPool(pool blockchain.PoolInfo, tradePoints decimal.Decimal, liquidityPoints decimal.Decimal, time time.Time) *Pool {
 	return &Pool{
 		Address:         pool.Address.String(),
 		Token0:          pool.Token0.Address.String(),
