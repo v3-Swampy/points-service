@@ -29,12 +29,12 @@ func (service *PoolService) BatchDeltaUpsert(pools []*model.Pool, dbTx ...*gorm.
 	var params []interface{}
 	size := len(pools)
 	for i, p := range pools {
-		placeholders += "(?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+		placeholders += "(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
 		if i != size-1 {
 			placeholders += ",\n\t\t\t"
 		}
 		params = append(params, []interface{}{
-			p.Address, p.Token0, p.Token1, p.Tvl, p.TradePoints, p.LiquidityPoints,
+			p.Address, p.Token0, p.Token1, p.Fee, p.Tvl, p.TradePoints, p.LiquidityPoints,
 			p.Token0Name, p.Token0Symbol, p.Token0Decimals,
 			p.Token1Name, p.Token1Symbol, p.Token1Decimals,
 			p.CreatedAt, p.UpdatedAt,
@@ -43,7 +43,7 @@ func (service *PoolService) BatchDeltaUpsert(pools []*model.Pool, dbTx ...*gorm.
 
 	sqlString := fmt.Sprintf(`
 		insert into 
-    		pools(address, token0, token1, tvl, trade_points, liquidity_points, 
+    		pools(address, token0, token1, fee, tvl, trade_points, liquidity_points, 
     		      token0_name, token0_symbol, token0_decimals, 
     		      token1_name, token1_symbol, token1_decimals,
     		      created_at, updated_at)
@@ -53,6 +53,7 @@ func (service *PoolService) BatchDeltaUpsert(pools []*model.Pool, dbTx ...*gorm.
 			address = values(address),
 			token0 = values(token0),
 			token1 = values(token1),
+			fee = values(fee),
 			tvl = values(tvl),
 			trade_points = trade_points + values(trade_points),
 			liquidity_points = liquidity_points + values(liquidity_points),
