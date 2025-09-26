@@ -51,7 +51,7 @@ func NewPoller(rpcUrl, scanUrl string, lastTimestamp int64, pools []common.Addre
 		return nil, errors.WithMessage(err, "Failed to create client")
 	}
 
-	intervalSecs, err := client.SnapshotIntervalSecs(context.Background())
+	intervalSecs, err := client.SnapshotIntervalSecs()
 	if err != nil {
 		return nil, errors.WithMessage(err, "Failed to get snapshot interval")
 	}
@@ -59,7 +59,7 @@ func NewPoller(rpcUrl, scanUrl string, lastTimestamp int64, pools []common.Addre
 	// retrieve first timestamp
 	var nextTimestamp int64
 	if lastTimestamp == 0 {
-		if nextTimestamp, err = client.FirstTimestamp(context.Background()); err != nil {
+		if nextTimestamp, err = client.FirstTimestamp(); err != nil {
 			return nil, errors.WithMessage(err, "Failed to poll first timestamp")
 		}
 	} else {
@@ -109,7 +109,7 @@ func (poller *Poller) Run(ctx context.Context, wg *sync.WaitGroup) {
 
 			start := time.Now()
 
-			data, ok, err := poller.poll(ctx, timestamp, lastMaxBlockNumber)
+			data, ok, err := poller.poll(timestamp, lastMaxBlockNumber)
 			if err != nil {
 				logger.WithError(err).Warn("Failed to poll data from contract parser")
 				ticker.Reset(poller.option.IntervalError)
@@ -131,9 +131,9 @@ func (poller *Poller) Run(ctx context.Context, wg *sync.WaitGroup) {
 	}
 }
 
-func (poller *Poller) poll(ctx context.Context, timestamp int64, lastMaxBlockNumber uint64) (Snapshot, bool, error) {
+func (poller *Poller) poll(timestamp int64, lastMaxBlockNumber uint64) (Snapshot, bool, error) {
 	// check if data avaialbe
-	latestTimestamp, err := poller.client.LatestTimestamp(ctx)
+	latestTimestamp, err := poller.client.LatestTimestamp()
 	if err != nil {
 		return Snapshot{}, false, errors.WithMessage(err, "Failed to poll latest timestamp")
 	}
@@ -147,8 +147,7 @@ func (poller *Poller) poll(ctx context.Context, timestamp int64, lastMaxBlockNum
 	result.Timestamp = timestamp
 	result.IntervalSecs = poller.intervalSecs
 
-	var group *errgroup.Group
-	group, ctx = errgroup.WithContext(ctx)
+	group := new(errgroup.Group)
 
 	numPools := len(poller.pools)
 	poolDataCh := make(chan PoolData, numPools)
@@ -163,11 +162,11 @@ func (poller *Poller) poll(ctx context.Context, timestamp int64, lastMaxBlockNum
 				Address: pool,
 			}
 
-			if data.Trades, err = poller.client.GetTradeDataAll(ctx, pool, timestamp); err != nil {
+			if data.Trades, err = poller.client.GetTradeDataAll(pool, timestamp); err != nil {
 				return errors.WithMessage(err, "Failed to poll trade data")
 			}
 
-			if data.Liquidities, err = poller.client.GetLiquidityDataAll(ctx, pool, timestamp); err != nil {
+			if data.Liquidities, err = poller.client.GetLiquidityDataAll(pool, timestamp); err != nil {
 				return errors.WithMessage(err, "Failed to poll liquidity data")
 			}
 

@@ -1,8 +1,6 @@
 package parsing
 
 import (
-	"context"
-
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/openweb3/go-rpc-provider/interfaces"
 	providers "github.com/openweb3/go-rpc-provider/provider_wrapper"
@@ -24,32 +22,32 @@ func NewClient(url string, option ...providers.Option) (*Client, error) {
 	}, nil
 }
 
-func (client *Client) FirstTimestamp(ctx context.Context) (int64, error) {
-	return providers.CallContext[int64](client.Provider, ctx, "firstTimestamp")
+func (client *Client) FirstTimestamp() (int64, error) {
+	return providers.Call[int64](client.Provider, "firstTimestamp")
 }
 
-func (client *Client) LatestTimestamp(ctx context.Context) (int64, error) {
-	return providers.CallContext[int64](client.Provider, ctx, "latestTimestamp")
+func (client *Client) LatestTimestamp() (int64, error) {
+	return providers.Call[int64](client.Provider, "latestTimestamp")
 }
 
-func (client *Client) SnapshotIntervalSecs(ctx context.Context) (int64, error) {
-	return providers.CallContext[int64](client.Provider, ctx, "snapshotInterval")
+func (client *Client) SnapshotIntervalSecs() (int64, error) {
+	return providers.Call[int64](client.Provider, "snapshotInterval")
 }
 
-func (client *Client) GetTradeData(ctx context.Context, pool common.Address, timestamp int64, offset int, limit ...int) (*PagingResult[TradeData], error) {
+func (client *Client) GetTradeData(pool common.Address, timestamp int64, offset int, limit ...int) (*PagingResult[TradeData], error) {
 	if len(limit) == 0 {
-		return providers.CallContext[*PagingResult[TradeData]](client.Provider, ctx, "getHourlyTradeData", pool, timestamp, offset)
+		return providers.Call[*PagingResult[TradeData]](client.Provider, "getHourlyTradeData", pool, timestamp, offset)
 	}
 
-	return providers.CallContext[*PagingResult[TradeData]](client.Provider, ctx, "getHourlyTradeData", pool, timestamp, offset, limit[0])
+	return providers.Call[*PagingResult[TradeData]](client.Provider, "getHourlyTradeData", pool, timestamp, offset, limit[0])
 }
 
-func (client *Client) GetTradeDataAll(ctx context.Context, pool common.Address, timestamp int64) ([]TradeData, error) {
+func (client *Client) GetTradeDataAll(pool common.Address, timestamp int64) ([]TradeData, error) {
 	var offset int
 	var all []TradeData
 
 	for {
-		result, err := client.GetTradeData(ctx, pool, timestamp, offset)
+		result, err := client.GetTradeData(pool, timestamp, offset)
 		if err != nil {
 			return nil, errors.WithMessagef(err, "Failed to get trade data with offset %v", offset)
 		}
@@ -72,20 +70,20 @@ func (client *Client) GetTradeDataAll(ctx context.Context, pool common.Address, 
 	}
 }
 
-func (client *Client) GetLiquidityData(ctx context.Context, pool common.Address, timestamp int64, offset int, limit ...int) (*PagingResult[LiquidityData], error) {
+func (client *Client) GetLiquidityData(pool common.Address, timestamp int64, offset int, limit ...int) (*PagingResult[LiquidityData], error) {
 	if len(limit) == 0 {
-		return providers.CallContext[*PagingResult[LiquidityData]](client.Provider, ctx, "getHourlyLiquidityData", pool, timestamp, offset)
+		return providers.Call[*PagingResult[LiquidityData]](client.Provider, "getHourlyLiquidityData", pool, timestamp, offset)
 	}
 
-	return providers.CallContext[*PagingResult[LiquidityData]](client.Provider, ctx, "getHourlyLiquidityData", pool, timestamp, offset, limit[0])
+	return providers.Call[*PagingResult[LiquidityData]](client.Provider, "getHourlyLiquidityData", pool, timestamp, offset, limit[0])
 }
 
-func (client *Client) GetLiquidityDataAll(ctx context.Context, pool common.Address, timestamp int64) ([]LiquidityData, error) {
+func (client *Client) GetLiquidityDataAll(pool common.Address, timestamp int64) ([]LiquidityData, error) {
 	var offset int
 	var all []LiquidityData
 
 	for {
-		result, err := client.GetLiquidityData(ctx, pool, timestamp, offset)
+		result, err := client.GetLiquidityData(pool, timestamp, offset)
 		if err != nil {
 			return nil, errors.WithMessagef(err, "Failed to get liquidity data with offset %v", offset)
 		}
