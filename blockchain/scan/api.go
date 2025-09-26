@@ -2,7 +2,6 @@ package scan
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -35,6 +34,7 @@ func (resp *Response[T]) GetResult() (v T, err error) {
 }
 
 type Api struct {
+	option Option
 	client *resty.Client
 }
 
@@ -46,11 +46,10 @@ func NewApi(url string, option ...Option) *Api {
 
 	defaults.SetDefaults(&opt)
 
-	baseUrl := fmt.Sprintf("%v/api?apiKey=%v", strings.TrimRight(url, "/"), opt.ApiKey)
-
 	return &Api{
+		option: opt,
 		client: resty.New().
-			SetBaseURL(baseUrl).
+			SetBaseURL(url).
 			SetDebug(opt.DebugEnabled).
 			SetTimeout(opt.RequestTimeout),
 	}
@@ -62,7 +61,7 @@ func (api *Api) GetBlockNumberByTime(timestampSecs int64, after bool) (uint64, e
 		closest = "after"
 	}
 
-	url := fmt.Sprintf("&module=block&action=getblocknobytime&timestamp=%v&closest=%v", timestampSecs, closest)
+	url := fmt.Sprintf("/api?module=block&action=getblocknobytime&timestamp=%v&closest=%v&apiKey=%v", timestampSecs, closest, api.option.ApiKey)
 
 	var resp Response[uint64]
 
