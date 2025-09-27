@@ -70,7 +70,7 @@ func (service *StatService) aggregateTrade(event []sync.TradeEvent, users map[st
 			return err
 		}
 		tradePoints := trade.Value0.Add(trade.Value1).Div(decimal.NewFromInt(2)).
-			Mul(decimal.NewFromInt(int64(weight.TradeWeight)))
+			Mul(weight.TradeWeight)
 
 		if u, exists := users[user]; exists {
 			u.TradePoints = u.TradePoints.Add(tradePoints)
@@ -101,7 +101,7 @@ func (service *StatService) aggregateLiquidity(event []sync.LiquidityEvent, user
 			return err
 		}
 		liquidityPoints := liquidity.Value0Seconds.Add(liquidity.Value1Seconds).
-			Mul(pointsPerValueSecond).Mul(decimal.NewFromInt(int64(weight.LiquidityWeight)))
+			Mul(pointsPerValueSecond).Mul(weight.LiquidityWeight)
 
 		if u, exists := users[user]; exists {
 			u.LiquidityPoints = u.LiquidityPoints.Add(liquidityPoints)

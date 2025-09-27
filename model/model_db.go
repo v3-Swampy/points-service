@@ -86,7 +86,7 @@ type Config struct {
 
 type PoolParams struct {
 	Model
-	Address         string `gorm:"size:64;not null;unique" json:"address"`
-	TradeWeight     uint8  `gorm:"not null;index" json:"tradeWeight"`
-	LiquidityWeight uint8  `gorm:"not null;index" json:"liquidityWeight"`
+	Address         string          `gorm:"size:64;not null;unique" json:"address"`
+	TradeWeight     decimal.Decimal `gorm:"type:decimal(6,3);not null;index" json:"tradeWeight"`
+	LiquidityWeight decimal.Decimal `gorm:"type:decimal(6,3);not null;index" json:"liquidityWeight"`
 }
