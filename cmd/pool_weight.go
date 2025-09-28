@@ -1,17 +1,22 @@
 package cmd
 
 import (
+	"regexp"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/pkg/errors"
+	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/v3-Swampy/points-service/cmd/util"
 )
 
 type poolWeightParams struct {
-	Address         string // pool address
-	TradeWeight     uint8  // trade weight
-	LiquidityWeight uint8  // liquidity weight
+	Address              string          // pool address
+	TradeWeight          decimal.Decimal // trade weight
+	LiquidityWeight      decimal.Decimal // liquidity weight
+	TradeWeightParam     string
+	LiquidityWeightParam string
 }
 
 var (
@@ -77,12 +82,12 @@ func upsertPoolWeight() {
 	storeCtx := util.MustInitStoreContext()
 	defer storeCtx.Close()
 
-	if err := validatePoolWeightParams(); err != nil {
+	if err := validatePoolWeightParams(true, true); err != nil {
 		logrus.WithError(err).Info("Invalid command config")
 		return
 	}
 
-	if weightParams.TradeWeight == 0 && weightParams.LiquidityWeight == 0 {
+	if weightParams.TradeWeight.IsZero() && weightParams.LiquidityWeight.IsZero() {
 		logrus.Info("At least one of --trade or --liquidity is required.")
 		return
 	}
@@ -100,7 +105,7 @@ func getPoolWeight(cmd *cobra.Command, args []string) {
 	storeCtx := util.MustInitStoreContext()
 	defer storeCtx.Close()
 
-	if err := validatePoolWeightParams(); err != nil {
+	if err := validatePoolWeightParams(false, false); err != nil {
 		logrus.WithError(err).Info("Invalid command config")
 		return
 	}
@@ -143,10 +148,43 @@ func listPoolWeight(cmd *cobra.Command, args []string) {
 	}
 }
 
-func validatePoolWeightParams() error {
+func validatePoolWeightParams(validateTradeWeight bool, validateLiquidityWeight bool) error {
 	if !common.IsHexAddress(weightParams.Address) {
 		return errors.Errorf("Invalid hex address of pool %v", weightParams.Address)
 	}
+
+	if validateTradeWeight {
+		matched, err := regexp.MatchString(`^(0|[1-9]\d*)(\.\d{1,3})?$`, weightParams.TradeWeightParam)
+		if err != nil {
+			return errors.Errorf("Invalid trade weight %v", weightParams.TradeWeightParam)
+		}
+		if !matched {
+			return errors.Errorf("Invalid trade weight %v. Only numbers are supported, with a maximum of three decimal", weightParams.TradeWeightParam)
+		}
+
+		tradeWeightParam, err := decimal.NewFromString(weightParams.TradeWeightParam)
+		if err != nil {
+			return err
+		}
+		weightParams.TradeWeight = tradeWeightParam
+	}
+
+	if validateLiquidityWeight {
+		matched, err := regexp.MatchString(`^(0|[1-9]\d*)(\.\d{1,3})?$`, weightParams.LiquidityWeightParam)
+		if err != nil {
+			return errors.Errorf("Invalid liquidity weight %v", weightParams.LiquidityWeightParam)
+		}
+		if !matched {
+			return errors.Errorf("Invalid liquidity weight %v. Only numbers are supported, with a maximum of three decimal", weightParams.LiquidityWeightParam)
+		}
+
+		liquidityWeight, err := decimal.NewFromString(weightParams.LiquidityWeightParam)
+		if err != nil {
+			return err
+		}
+		weightParams.LiquidityWeight = liquidityWeight
+	}
+
 	return nil
 }
 
@@ -157,14 +195,14 @@ func hookPoolWeightParams(cmd *cobra.Command, hookTradeWeight, hookLiquidityWeig
 	cmd.MarkFlagRequired("pool")
 
 	if hookTradeWeight {
-		cmd.Flags().Uint8VarP(
-			&weightParams.TradeWeight, "trade", "t", 0, "trade weight",
+		cmd.Flags().StringVarP(
+			&weightParams.TradeWeightParam, "trade", "t", "0", "trade weight",
 		)
 	}
 
 	if hookLiquidityWeight {
-		cmd.Flags().Uint8VarP(
-			&weightParams.LiquidityWeight, "liquidity", "l", 0, "liquidity weight",
+		cmd.Flags().StringVarP(
+			&weightParams.LiquidityWeightParam, "liquidity", "l", "0", "liquidity weight",
 		)
 	}
 }

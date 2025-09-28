@@ -263,7 +263,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "liquidityWeight": {
-                    "type": "integer"
+                    "type": "number"
                 },
                 "token0": {
                     "type": "string"
@@ -278,7 +278,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "tradeWeight": {
-                    "type": "integer"
+                    "type": "number"
                 },
                 "tvl": {
                     "type": "number"

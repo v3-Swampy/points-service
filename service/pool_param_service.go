@@ -3,6 +3,7 @@ package service
 import (
 	"github.com/Conflux-Chain/go-conflux-util/api"
 	"github.com/Conflux-Chain/go-conflux-util/store"
+	"github.com/shopspring/decimal"
 	"github.com/sirupsen/logrus"
 	"github.com/v3-Swampy/points-service/model"
 )
@@ -54,7 +55,7 @@ func (service *PoolParamService) GetOrDefault(pool string, defaultValue model.Po
 	return bean, nil
 }
 
-func (service *PoolParamService) Upsert(pool string, tradeWeight, liquidityWeight uint8) error {
+func (service *PoolParamService) Upsert(pool string, tradeWeight, liquidityWeight decimal.Decimal) error {
 	var param model.PoolParams
 	found, err := service.store.Get(&param, "address = ?", pool)
 	if err != nil {
@@ -71,10 +72,10 @@ func (service *PoolParamService) Upsert(pool string, tradeWeight, liquidityWeigh
 	}
 
 	newParam := map[string]any{}
-	if tradeWeight > 0 {
+	if tradeWeight.IsPositive() {
 		newParam["trade_weight"] = tradeWeight
 	}
-	if liquidityWeight > 0 {
+	if liquidityWeight.IsPositive() {
 		newParam["liquidity_weight"] = liquidityWeight
 	}
 

@@ -44,13 +44,13 @@ type UserInfo struct {
 }
 
 type PoolParamInfo struct {
-	Address         string `json:"address"`
-	Token0          string `json:"token0"`
-	Token1          string `json:"token1"`
-	Token0Symbol    string `json:"token0Symbol"`
-	Token1Symbol    string `json:"token1Symbol"`
-	TradeWeight     uint8  `json:"tradeWeight"`
-	LiquidityWeight uint8  `json:"liquidityWeight"`
+	Address         string          `json:"address"`
+	Token0          string          `json:"token0"`
+	Token1          string          `json:"token1"`
+	Token0Symbol    string          `json:"token0Symbol"`
+	Token1Symbol    string          `json:"token1Symbol"`
+	TradeWeight     decimal.Decimal `json:"tradeWeight"`
+	LiquidityWeight decimal.Decimal `json:"liquidityWeight"`
 }
 
 type PoolInfo struct {

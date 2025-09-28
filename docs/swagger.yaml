@@ -39,7 +39,7 @@ definitions:
       fee:
         type: integer
       liquidityWeight:
-        type: integer
+        type: number
       token0:
         type: string
       token0Symbol:
@@ -49,7 +49,7 @@ definitions:
       token1Symbol:
         type: string
       tradeWeight:
-        type: integer
+        type: number
       tvl:
         type: number
     type: object
