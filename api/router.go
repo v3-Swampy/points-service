@@ -26,7 +26,7 @@ func MustServeFromViper(services service.Services) {
 //	@description	Use any http client to fetch data from the Points Service
 
 func Routes(router *gin.Engine, services service.Services) {
-	docs.SwaggerInfo.BasePath = "/api"
+	docs.SwaggerInfo.BasePath = "/points/api"
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	controller := NewController(services)
