@@ -31,6 +31,7 @@ func Routes(router *gin.Engine, services service.Services) {
 
 	controller := NewController(services)
 
+	router.GET("/api/user", middleware.Wrap(controller.getUser))
 	router.GET("/api/users", middleware.Wrap(controller.listUsers))
 	router.GET("/api/pools", middleware.Wrap(controller.listPools))
 

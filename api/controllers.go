@@ -2,6 +2,7 @@ package api
 
 import (
 	"github.com/Conflux-Chain/go-conflux-util/api"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/gin-gonic/gin"
 	"github.com/v3-Swampy/points-service/model"
 	"github.com/v3-Swampy/points-service/service"
@@ -13,6 +14,40 @@ type Controller struct {
 
 func NewController(services service.Services) *Controller {
 	return &Controller{services}
+}
+
+// getUser returns user info
+//
+//	@Summary		Get user
+//	@Description	Get user's points info.
+//	@Tags			User
+//	@Accept			json
+//	@Produce		json
+//	@Param			address	query		string									true	"User hex address"
+//	@Success		200		{object}	api.BusinessError{data=model.UserInfo}	"User's points info"
+//	@Failure		600		{object}	api.BusinessError{data=string}			"Internal server error"
+//	@Router			/user															[get]
+func (controller *Controller) getUser(c *gin.Context) (any, error) {
+	var input model.UserRequest
+
+	if err := c.ShouldBind(&input); err != nil {
+		return nil, api.ErrValidation(err)
+	}
+
+	if !common.IsHexAddress(input.Address) {
+		return nil, api.ErrValidationStrf("Invalid hex address of user %v", input.Address)
+	}
+
+	user, err := controller.services.User.Get(input.Address)
+	if err != nil {
+		return nil, err
+	}
+
+	return model.UserInfo{
+		Address:         user.Address,
+		TradePoints:     user.TradePoints,
+		LiquidityPoints: user.LiquidityPoints,
+	}, nil
 }
 
 // listUsers returns users in pagination view.
@@ -28,7 +63,7 @@ func NewController(services service.Services) *Controller {
 //	@Param			sortField	query		string																	false	"The field used for sorting. The value is trade or liquidity"				Enums(trade, liquidity)	default(trade)
 //	@Success		200			{object}	api.BusinessError{data=model.PagingResultWithUpdatedAt[model.UserInfo]}	"Paged users"
 //	@Failure		600			{object}	api.BusinessError{data=string}											"Internal server error"
-//	@Router			/users		[get]
+//	@Router			/users																									[get]
 func (controller *Controller) listUsers(c *gin.Context) (any, error) {
 	var input model.UserPagingRequest
 
@@ -76,7 +111,7 @@ func (controller *Controller) listUsers(c *gin.Context) (any, error) {
 //	@Param			sortField	query		string														false	"The field used for sorting. The value is tvl, trade or liquidity"			Enums(tvl, trade, liquidity)	default(tvl)
 //	@Success		200			{object}	api.BusinessError{data=model.PagingResult[model.PoolInfo]}	"Paged pools"
 //	@Failure		600			{object}	api.BusinessError{data=string}								"Internal server error"
-//	@Router			/pools		[get]
+//	@Router			/pools																						[get]
 func (controller *Controller) listPools(c *gin.Context) (any, error) {
 	var input model.PoolPagingRequest
 
