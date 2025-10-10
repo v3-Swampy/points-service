@@ -6,6 +6,10 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+type UserRequest struct {
+	Address string `form:"address" binding:"required"`
+}
+
 type PagingRequest struct {
 	Offset int    `form:"offset" binding:"min=0"`
 	Limit  int    `form:"limit" binding:"required,min=1,max=100"`

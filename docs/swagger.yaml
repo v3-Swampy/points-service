@@ -126,6 +126,41 @@ paths:
       summary: List pools
       tags:
       - Pool
+  /user:
+    get:
+      consumes:
+      - application/json
+      description: Get user's points info.
+      parameters:
+      - description: User hex address
+        in: query
+        name: address
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User's points info
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.BusinessError'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UserInfo'
+              type: object
+        "600":
+          description: Internal server error
+          schema:
+            allOf:
+            - $ref: '#/definitions/api.BusinessError'
+            - properties:
+                data:
+                  type: string
+              type: object
+      summary: Get user
+      tags:
+      - User
   /users:
     get:
       consumes:
